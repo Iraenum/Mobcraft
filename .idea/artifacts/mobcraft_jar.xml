@@ -1,0 +1,12 @@
+<component name="ArtifactManager">
+  <artifact type="jar" build-on-make="true" name="mobcraft:jar">
+    <output-path>$PROJECT_DIR$/../../../crafty/crafty-4/servers/9b29710e-2ba4-4fb2-8d92-3f03c39855e7/plugins</output-path>
+    <root id="archive" name="mobcraft.jar">
+      <element id="module-output" name="mobcraft" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/jetbrains/annotations/26.0.2/annotations-26.0.2.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/jetbrains/kotlin/kotlin-stdlib/2.2.20-RC/kotlin-stdlib-2.2.20-RC.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/jetbrains/kotlin/kotlin-stdlib-jdk8/2.2.20-RC/kotlin-stdlib-jdk8-2.2.20-RC.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/jetbrains/kotlin/kotlin-stdlib-jdk7/2.2.20-RC/kotlin-stdlib-jdk7-2.2.20-RC.jar" path-in-jar="/" />
+    </root>
+  </artifact>
+</component>
