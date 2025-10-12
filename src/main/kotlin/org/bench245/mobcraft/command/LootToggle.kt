@@ -1,7 +1,6 @@
 package org.bench245.mobcraft.command
 
 import org.bench245.mobcraft.Mobcraft
-import org.bukkit.Bukkit
 import org.bukkit.command.Command
 import org.bukkit.command.CommandExecutor
 import org.bukkit.command.CommandSender

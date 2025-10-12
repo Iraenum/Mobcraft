@@ -1,13 +1,6 @@
 package org.bench245.mobcraft
 import net.kyori.adventure.util.TriState
-import org.bench245.mobcraft.command.Flight
-import org.bench245.mobcraft.command.FlightCompleter
-import org.bench245.mobcraft.command.LootToggle
-import org.bench245.mobcraft.command.LootToggleCompleter
-import org.bench245.mobcraft.command.MobPower
-import org.bench245.mobcraft.command.MobPowerCompleter
-import org.bukkit.Bukkit
-import org.bukkit.GameMode
+import org.bench245.mobcraft.command.*
 import org.bukkit.NamespacedKey
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
