@@ -33,6 +33,7 @@ class Mobcraft : JavaPlugin(), Listener {
         getCommand("setmob")?.tabCompleter = MobPowerCompleter(this)
         loadMobcraftConfig() // Load the mobs from the config
         logger.info("LootTableControlPlugin has been enabled!")
+        //test
     }
 
     override fun onDisable() {
