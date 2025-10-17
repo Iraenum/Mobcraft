@@ -14,3 +14,4 @@ commands:
     description: Toggles flight the current player and lets operators manage who can fly.
     usage: /flight <add|remove> [player] [speed]
     aliases: [fly]
+depend: [ProtocolLib]
