@@ -1,6 +1,7 @@
 package org.bench245.mobcraft
 import net.kyori.adventure.util.TriState
 import org.bench245.mobcraft.command.*
+import org.bench245.mobcraft.command.MobCraft.MobPowers.MobPowers
 import org.bukkit.NamespacedKey
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
@@ -33,12 +34,15 @@ class Mobcraft : JavaPlugin(), Listener {
         getCommand("setmob")?.tabCompleter = MobPowerCompleter(this)
         loadMobcraftConfig() // Load the mobs from the config
         logger.info("LootTableControlPlugin has been enabled!")
+        val mobPowers = MobPowers(this)
+        server.pluginManager.registerEvents(mobPowers, this)
+
     }
 
     override fun onDisable() {
         saveMobcraftConfig()
     }
-    
+
     private fun loadMobcraftConfig() {
         // Load mobs to prevent loot
         val mobsConfig = config.getStringList("mobsToPreventLoot")
