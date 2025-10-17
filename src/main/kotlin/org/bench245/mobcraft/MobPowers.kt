@@ -1,22 +1,22 @@
 package org.bench245.mobcraft.command.MobCraft.MobPowers
 
 import org.bench245.mobcraft.Mobcraft
-import org.bukkit.ChatColor
 import org.bukkit.Material
-import org.bukkit.command.CommandExecutor
-import org.bukkit.command.TabCompleter
+import org.bukkit.entity.Player
 import org.bukkit.entity.SmallFireball
-import org.bukkit.event.EventHandler
-import org.bukkit.event.Listener
 import org.bukkit.event.entity.EntityDamageByEntityEvent
 import org.bukkit.event.player.PlayerInteractEvent
+import org.bukkit.event.player.PlayerJoinEvent
+import org.bukkit.event.player.PlayerRespawnEvent
 
-class MobPowers(private val plugin: Mobcraft) : Listener, CommandExecutor, TabCompleter {
-
-
+class MobPowers(private val plugin: Mobcraft) {
+    fun onBlazeInitialized(player: Player){
+        plugin.mobsToPreventLoot.add("BLAZE")
+        plugin.enableFlight(player)
+        player.flySpeed = 0.08F
+    }
     // Fire a small non-explosive fireball only when right-clicking with a Blaze Rod
-    @EventHandler
-    fun onPlayerRightClick(event: PlayerInteractEvent) {
+    fun onBlazeRightClick(event: PlayerInteractEvent) {
         val player = event.player
         val actionName = event.action.name
         if (!actionName.contains("RIGHT_CLICK")) return
@@ -29,7 +29,8 @@ class MobPowers(private val plugin: Mobcraft) : Listener, CommandExecutor, TabCo
         // SmallFireball doesn't always expose setIsIncendiary in older APIs — try reflection fallback:
         try {
             // In modern Paper APIs SmallFireball has setIsIncendiary(Boolean)
-            val method = fireball::class.java.methods.firstOrNull { it.name == "setIsIncendiary" && it.parameterCount == 1 }
+            val method =
+                fireball::class.java.methods.firstOrNull { it.name == "setIsIncendiary" && it.parameterCount == 1 }
             method?.invoke(fireball, true as java.lang.Boolean)
         } catch (_: Throwable) {
             // ignore if not present
@@ -43,16 +44,32 @@ class MobPowers(private val plugin: Mobcraft) : Listener, CommandExecutor, TabCo
         }
 
         player.world.playSound(player.location, org.bukkit.Sound.ENTITY_BLAZE_SHOOT, 1f, 1f)
-        player.sendMessage("${ChatColor.RED}🔥 Fireball launched! 🔥")
     }
 
     // Add +2 melee damage for Blaze players (applied on hit)
-    @EventHandler
-    fun onPlayerHit(event: EntityDamageByEntityEvent) {
+    fun onBlazehit(event: EntityDamageByEntityEvent) {
         val damager = event.damager
         event.damage += 2.0
-        damager.sendMessage("${ChatColor.RED}🔥 Blaze power adds +2 damage! 🔥")
+    }
+    fun onEndermanInitialized(player: Player){
+        applyEndermanSpeed(player)
+        plugin.mobsToPreventLoot.add("ENDERMAN")
     }
 
+    fun applyEndermanSpeed(player: Player) {
+        val attribute = player.getAttribute(org.bukkit.attribute.Attribute.MOVEMENT_SPEED)
+        if (attribute != null) {
+            // Default player speed = 0.1, so +0.05 is a 50% boost
+            attribute.baseValue = 0.14
+        }
+    }
+
+    fun onEndermanJoin(event: PlayerJoinEvent) {
+        applyEndermanSpeed(event.player)
+    }
+
+    fun onEndermanRespawn(event: PlayerRespawnEvent) {
+        applyEndermanSpeed(event.player)
+    }
 }
 
