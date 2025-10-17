@@ -34,9 +34,6 @@ class Mobcraft : JavaPlugin(), Listener {
         getCommand("setmob")?.tabCompleter = MobPowerCompleter(this)
         loadMobcraftConfig() // Load the mobs from the config
         logger.info("LootTableControlPlugin has been enabled!")
-        val mobPowers = MobPowers(this)
-        server.pluginManager.registerEvents(mobPowers, this)
-
     }
 
     override fun onDisable() {
@@ -60,8 +57,18 @@ class Mobcraft : JavaPlugin(), Listener {
         config.set("mobsToPreventLoot", mobsToPreventLoot.toList())
         // Save the current list of flying players
         config.set("flyingPlayers", flyingPlayers.toList())
+        // Save the current list of mob powers
+        config.set("payerMobMap", playerMobMap)
         saveConfig() // Save the config file
     }
+
+    fun setPlayerMob(player: Player, mob: String) {
+        playerMobMap[player] = mob
+    }
+    fun getPlayerMob(player: Player) {
+        playerMobMap.getOrDefault(player, "none")
+    }
+
     fun enableFlight(player: Player?) {
         if (player!!.name in flyingPlayers) {
             player.allowFlight = true
