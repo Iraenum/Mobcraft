@@ -10,7 +10,9 @@ import org.bukkit.event.player.PlayerJoinEvent
 import org.bukkit.event.player.PlayerRespawnEvent
 
 class MobPowers(private val plugin: Mobcraft) {
-    fun onBlazeInitialized(player: Player){
+
+    //Blaze
+    fun onBlazeInitialize(player: Player) {
         plugin.mobsToPreventLoot.add("BLAZE")
         plugin.enableFlight(player)
         player.flySpeed = 0.08F
@@ -45,17 +47,16 @@ class MobPowers(private val plugin: Mobcraft) {
 
         player.world.playSound(player.location, org.bukkit.Sound.ENTITY_BLAZE_SHOOT, 1f, 1f)
     }
-
-    // Add +2 melee damage for Blaze players (applied on hit)
-    fun onBlazehit(event: EntityDamageByEntityEvent) {
+    fun onBlazeHit(event: EntityDamageByEntityEvent) {
         val damager = event.damager
         event.damage += 2.0
     }
-    fun onEndermanInitialized(player: Player){
+
+    //Enderman
+    fun onEndermanInitialize(player: Player) {
         applyEndermanSpeed(player)
         plugin.mobsToPreventLoot.add("ENDERMAN")
     }
-
     fun applyEndermanSpeed(player: Player) {
         val attribute = player.getAttribute(org.bukkit.attribute.Attribute.MOVEMENT_SPEED)
         if (attribute != null) {
@@ -63,11 +64,9 @@ class MobPowers(private val plugin: Mobcraft) {
             attribute.baseValue = 0.14
         }
     }
-
     fun onEndermanJoin(event: PlayerJoinEvent) {
         applyEndermanSpeed(event.player)
     }
-
     fun onEndermanRespawn(event: PlayerRespawnEvent) {
         applyEndermanSpeed(event.player)
     }
