@@ -1,7 +1,6 @@
 package org.bench245.mobcraft
 import net.kyori.adventure.util.TriState
 import org.bench245.mobcraft.command.*
-import org.bench245.mobcraft.command.MobCraft.MobPowers.MobPowers
 import org.bukkit.NamespacedKey
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
@@ -19,6 +18,7 @@ class Mobcraft : JavaPlugin(), Listener {
     val mobsToPreventLoot = mutableSetOf<String>() // Set to store mob types
     val flyingPlayers = mutableSetOf<String>()
     val playerMobMap: MutableMap<Player, String> = mutableMapOf()
+    val takenMobs = mutableSetOf<String>()
     private val lootToggleCommand = LootToggle(this)
     private val flightCommand = Flight(this)
     private val mobPower = MobPower(this)
@@ -59,6 +59,7 @@ class Mobcraft : JavaPlugin(), Listener {
         config.set("flyingPlayers", flyingPlayers.toList())
         // Save the current list of mob powers
         config.set("payerMobMap", playerMobMap)
+        config.set("takenMobs", takenMobs.toList())
         saveConfig() // Save the config file
     }
 
