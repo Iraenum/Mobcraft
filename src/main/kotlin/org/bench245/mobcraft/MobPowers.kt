@@ -27,16 +27,13 @@ class MobPowers(private val plugin: Mobcraft) {
         plugin.enableFlight(player)
         player.flySpeed = 0.1F
     }
-
     // Fire a small non-explosive fireball only when right-clicking with a Blaze Rod
     fun onBlazeRightClick(event: PlayerInteractEvent) {
         val player = event.player
         val actionName = event.action.name
         if (!actionName.contains("RIGHT_CLICK")) return
-
         val item = player.inventory.itemInMainHand
         if (item.type != Material.BLAZE_ROD) return
-
         // Launch SmallFireball (non-explosive, will ignite targets)
         val fireball = player.launchProjectile(SmallFireball::class.java)
         // SmallFireball doesn't always expose setIsIncendiary in older APIs — try reflection fallback:
@@ -55,21 +52,17 @@ class MobPowers(private val plugin: Mobcraft) {
         } catch (_: Throwable) {
             // ignore if not present
         }
-
         player.world.playSound(player.location, org.bukkit.Sound.ENTITY_BLAZE_SHOOT, 1f, 1f)
     }
-
     // Add +2 melee damage for Blaze players (applied on hit)
     fun onBlazehit(event: EntityDamageByEntityEvent) {
         val damager = event.damager
         event.damage += 2.0
     }
-
     fun onEndermanInitialized(player: Player) {
         applyEndermanSpeed(player)
         plugin.mobsToPreventLoot.add("ENDERMAN")
     }
-
     fun applyEndermanSpeed(player: Player) {
         val attribute = player.getAttribute(org.bukkit.attribute.Attribute.MOVEMENT_SPEED)
         if (attribute != null) {
@@ -77,15 +70,12 @@ class MobPowers(private val plugin: Mobcraft) {
             attribute.baseValue = 0.14
         }
     }
-
     fun onEndermanJoin(event: PlayerJoinEvent) {
         applyEndermanSpeed(event.player)
     }
-
     fun onEndermanRespawn(event: PlayerRespawnEvent) {
         applyEndermanSpeed(event.player)
     }
-
     fun onEnderDragonInitialized(player: Player) {
         plugin.mobsToPreventLoot.add("ENDERDRAGON")
         // Fire Resistance + Water Breathing
@@ -94,7 +84,6 @@ class MobPowers(private val plugin: Mobcraft) {
         plugin.enableFlight(player)
         player.flySpeed = 0.3F
     }
-
     fun onEnderDragonMove(event: PlayerMoveEvent) {
         val player = event.player
         // ----------------------- Immunity to Weakness, Slowness, Poison, Wither, Slow Falling -----------------------
@@ -122,7 +111,6 @@ class MobPowers(private val plugin: Mobcraft) {
             val armorAttr = player.getAttribute(Attribute.ARMOR_TOUGHNESS)
             armorAttr?.baseValue = (armorAttr?.baseValue ?: 0.0) + 1.0
         }
-
         // ----------------------- DAMAGE REDUCTION -----------------------
         fun onTuffGolemHit(event: EntityDamageByEntityEvent) {
             val player = event.entity
@@ -133,24 +121,21 @@ class MobPowers(private val plugin: Mobcraft) {
             // ----------------------- INSTANT RESPAWN -----------------------
             fun onTuffGolemDeath(event: PlayerDeathEvent) {
                 val player = event.entity
-                if (plugin.playerMobMap[player] == "TUFFGOLEM") {
+                if (plugin.playerMobMap[player] == "TUFFGOLEM")
                     plugin.server.scheduler.runTaskLater(plugin, Runnable {
                         player.spigot().respawn()
-                        player.sendMessage("${ChatColor.GRAY}You instantly respawned as a Tuff Golem!")
                     }, 1L)
                     // ----------------------- ENDERCHEST ACCESS -----------------------
                     fun openEnderChest(player: Player) {
                         if (plugin.playerMobMap[player] != "tuff_golem") return
                         player.openInventory(player.enderChest)
                     }
-
                     //----------------Ghast Start------------------
                     fun onGhastInitialized(player: Player) {
                         plugin.mobsToPreventLoot.add("GHAST")
                         plugin.enableFlight(player)
                         player.flySpeed = 0.1F
                     }
-
                     // ----------------------- SHOOT FIREBALL -----------------------
                     fun onGhastFireball(event: PlayerInteractEvent) {
                         val player = event.player
@@ -164,7 +149,6 @@ class MobPowers(private val plugin: Mobcraft) {
                         fireball.yield = 1f
                         player.world.playSound(player.location, Sound.ENTITY_GHAST_SHOOT, 1f, 1f)
                     }
-
                     // ----------------------- AXOLOTL Start -----------------------
                     fun onAxolotlInitialized(player: Player) {
                         plugin.mobsToPreventLoot.add("AXOLOTL")
@@ -191,7 +175,6 @@ class MobPowers(private val plugin: Mobcraft) {
                         )
                     }
                     // ----------------------- INSTANT RESPAWN -----------------------
-
                     fun onAxolotlDeath(event: PlayerDeathEvent) {
                         val player = event.entity
                         if (plugin.playerMobMap[player] != "axolotl") return
@@ -208,7 +191,6 @@ class MobPowers(private val plugin: Mobcraft) {
                             player.addPotionEffect(
                                 PotionEffect(PotionEffectType.WATER_BREATHING, Int.MAX_VALUE, 0, false, false)
                             )
-
                             // Schedule mining fatigue application every 30s while underwater
                             object : BukkitRunnable() {
                                 override fun run() {
@@ -234,7 +216,6 @@ class MobPowers(private val plugin: Mobcraft) {
                                 }
                             }.runTaskTimer(plugin, 0L, 600L) // 600 ticks = 30 seconds
                         }
-
                         fun onElderGuardianHit(event: EntityDamageByEntityEvent) {
                             val damager = event.damager
                             if (damager is Player) {
