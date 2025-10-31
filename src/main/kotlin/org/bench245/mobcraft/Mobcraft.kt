@@ -1,7 +1,6 @@
 package org.bench245.mobcraft
 import net.kyori.adventure.util.TriState
 import org.bench245.mobcraft.command.*
-import org.bench245.mobcraft.command.MobCraft.MobPowers.MobPowers
 import org.bukkit.NamespacedKey
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
