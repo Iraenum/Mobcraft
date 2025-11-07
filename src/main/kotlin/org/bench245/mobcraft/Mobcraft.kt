@@ -28,7 +28,7 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
     val takenMobs = mutableSetOf<String>()
     private val lootToggleCommand = LootToggle(this)
     private val flightCommand = Flight(this)
-    private val mobPower = MobPower(this)
+    private val setMob = SetMob(this)
     private lateinit var mobPowers: MobPowers
 
     override fun onEnable() {
@@ -39,8 +39,8 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
         getCommand("loottoggle")?.tabCompleter = LootToggleCompleter(this)
         getCommand("flight")?.setExecutor(flightCommand)
         getCommand("flight")?.tabCompleter = FlightCompleter(this)
-        getCommand("setmob")?.setExecutor(this)
-        getCommand("setmob")?.tabCompleter = MobPowerCompleter(this)
+        getCommand("setmob")?.setExecutor(setMob)
+        getCommand("setmob")?.tabCompleter = SetMobCompleter(this)
         loadMobcraftConfig()
         logger.info("LootTableControlPlugin has been enabled!")
     }

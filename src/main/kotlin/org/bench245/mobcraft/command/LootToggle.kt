@@ -9,8 +9,7 @@ import org.bukkit.command.CommandSender
 class LootToggle(private val plugin: Mobcraft) : CommandExecutor {
     override fun onCommand(sender: CommandSender, command: Command, label: String, args: Array<out String>): Boolean {
         if (args.isEmpty()) {
-            sender.sendMessage("Usage: /loottoggle <enable|disable|add|remove> [mobType]")
-            return true
+            return false
         }
 
         when (args[0].lowercase()) {
