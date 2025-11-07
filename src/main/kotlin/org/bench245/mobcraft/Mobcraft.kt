@@ -168,7 +168,7 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
         val mob = playerMobMap[player]?.uppercase() ?: return
 
         when (mob) {
-            "ENDERDRAGON" -> mobPowers.onEnderDragonMove(event)
+            "ENDER_DRAGON" -> mobPowers.onEnderDragonMove(event)
             "SKELETON" -> mobPowers.onSkeletonTick(player)
         }
     }
@@ -179,7 +179,7 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
         val mob = playerMobMap[player]?.uppercase() ?: return
 
         when (mob) {
-            "ENDERDRAGON" -> mobPowers.onEnderDragonBreak(event)
+            "ENDER_DRAGON" -> mobPowers.onEnderDragonBreak(event)
         }
     }
 

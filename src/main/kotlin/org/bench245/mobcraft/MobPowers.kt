@@ -21,7 +21,7 @@ import org.bukkit.scheduler.BukkitRunnable
 class MobPowers(private val plugin: Mobcraft) {
 
     // ----------------------- BLAZE -------------------------------
-    fun onBlazeInitialized(player: Player) {
+    fun onBlazeInitialize(player: Player) {
         plugin.mobsToPreventLoot.add("BLAZE")
         plugin.enableFlight(player)
         player.flySpeed = 0.1F
@@ -32,7 +32,7 @@ class MobPowers(private val plugin: Mobcraft) {
         if (player.inventory.itemInMainHand.type != Material.BLAZE_ROD) return
 
         val fireball = player.launchProjectile(SmallFireball::class.java)
-        (fireball as org.bukkit.entity.Fireball).setIsIncendiary(true)
+        (fireball as Fireball).setIsIncendiary(true)
         fireball.yield = 0f
         player.world.playSound(player.location, Sound.ENTITY_BLAZE_SHOOT, 1f, 1f)
     }
@@ -40,7 +40,7 @@ class MobPowers(private val plugin: Mobcraft) {
         event.damage += 2.0
     }
     // ----------------------- ENDERMAN -----------------------------
-    fun onEndermanInitialized(player: Player) {
+    fun onEndermanInitialize(player: Player) {
         plugin.mobsToPreventLoot.add("ENDERMAN")
         applyEndermanSpeed(player)
     }
@@ -80,8 +80,8 @@ class MobPowers(private val plugin: Mobcraft) {
     }
 
     // ----------------------- ENDER DRAGON -------------------------
-    fun onEnderDragonInitialized(player: Player) {
-        plugin.mobsToPreventLoot.add("ENDERDRAGON")
+    fun onEnderDragonInitialize(player: Player) {
+        plugin.mobsToPreventLoot.add("ENDER_DRAGON")
         plugin.enableFlight(player)
         player.flySpeed = 0.3F
         player.addPotionEffect(PotionEffect(PotionEffectType.FIRE_RESISTANCE, Int.MAX_VALUE, 0))
@@ -170,7 +170,7 @@ class MobPowers(private val plugin: Mobcraft) {
         return "${chunk.world.name}_${chunk.x shr 2}_${chunk.z shr 2}"
     }
     // ----------------------- TUFF GOLEM ---------------------------
-    fun onTuffGolemInitialized(player: Player) {
+    fun onTuffGolemInitialize(player: Player) {
         player.getAttribute(Attribute.ARMOR_TOUGHNESS)?.baseValue =
             (player.getAttribute(Attribute.ARMOR_TOUGHNESS)?.baseValue ?: 0.0) + 1.0
     }
@@ -194,7 +194,7 @@ class MobPowers(private val plugin: Mobcraft) {
         }
     }
     // ----------------------- GHAST -------------------------------
-    fun onGhastInitialized(player: Player) {
+    fun onGhastInitialize(player: Player) {
         plugin.mobsToPreventLoot.add("GHAST")
         plugin.enableFlight(player)
         player.flySpeed = 0.1F
@@ -206,12 +206,12 @@ class MobPowers(private val plugin: Mobcraft) {
         if (player.inventory.itemInMainHand.type != Material.GHAST_TEAR) return
 
         val fireball = player.launchProjectile(Fireball::class.java)
-        (fireball as org.bukkit.entity.Fireball).setIsIncendiary(true)
+        fireball.setIsIncendiary(true)
         fireball.yield = 1f
         player.world.playSound(player.location, Sound.ENTITY_GHAST_SHOOT, 1f, 1f)
     }
     // ----------------------- AXOLOTL -----------------------------
-    fun onAxolotlInitialized(player: Player) {
+    fun onAxolotlInitialize(player: Player) {
         plugin.mobsToPreventLoot.add("AXOLOTL")
         player.addPotionEffect(PotionEffect(PotionEffectType.SPEED, Int.MAX_VALUE, 1))
         player.addPotionEffect(PotionEffect(PotionEffectType.REGENERATION, Int.MAX_VALUE, 1))
@@ -228,7 +228,7 @@ class MobPowers(private val plugin: Mobcraft) {
         }
     }
     // ----------------------- ELDER GUARDIAN -----------------------
-    fun onElderGuardianInitialized(player: Player) {
+    fun onElderGuardianInitialize(player: Player) {
         plugin.mobsToPreventLoot.add("ELDER_GUARDIAN")
         player.addPotionEffect(PotionEffect(PotionEffectType.RESISTANCE, Int.MAX_VALUE, 0))
         player.addPotionEffect(PotionEffect(PotionEffectType.WATER_BREATHING, Int.MAX_VALUE, 0))
@@ -262,7 +262,7 @@ class MobPowers(private val plugin: Mobcraft) {
         player.world.spawnParticle(Particle.END_ROD, player.location.add(0.0, 1.5, 0.0), 25, 0.2, 0.2, 0.2, 0.01)
     }
     // ----------------------- SKELETON -----------------------
-    fun onSkeletonInitialized(player: Player) {
+    fun onSkeletonInitialize(player: Player) {
         plugin.mobsToPreventLoot.add("SKELETON")
 
         // Skeletons are immune to poison
