@@ -6,10 +6,9 @@ import org.bukkit.command.Command
 import org.bukkit.command.CommandExecutor
 import org.bukkit.command.CommandSender
 
-
 class MobPower(private val plugin: Mobcraft) : CommandExecutor {
     override fun onCommand(sender: CommandSender, command: Command, label: String, args: Array<out String>): Boolean {
-        if (true) {
+        if (sender.isOp) {
             plugin.setPlayerMob(Bukkit.getPlayer(args[0])!!,args[1])
             plugin.takenMobs.add(args[1])
             return true
