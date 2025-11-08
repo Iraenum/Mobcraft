@@ -39,6 +39,9 @@ class MobPowers(private val plugin: Mobcraft) {
     fun onBlazeHit(event: EntityDamageByEntityEvent) {
         event.damage += 2.0
     }
+    fun onBlazeMove(event: PlayerMoveEvent){
+        event.player.addPotionEffect(PotionEffect(PotionEffectType.FIRE_RESISTANCE, Int.MAX_VALUE, 1))
+    }
     // ----------------------- ENDERMAN -----------------------------
     fun onEndermanInitialize(player: Player) {
         plugin.mobsToPreventLoot.add("ENDERMAN")

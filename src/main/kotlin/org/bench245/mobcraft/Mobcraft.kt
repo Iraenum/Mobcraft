@@ -170,6 +170,7 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
         when (mob) {
             "ENDER_DRAGON" -> mobPowers.onEnderDragonMove(event)
             "SKELETON" -> mobPowers.onSkeletonTick(player)
+            "BLAZE" -> mobPowers.onBlazeMove(event)
         }
     }
 
