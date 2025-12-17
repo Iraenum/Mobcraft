@@ -1,6 +1,5 @@
 package org.bench245.mobcraft.command
 
-import net.kyori.adventure.util.TriState
 import org.bench245.mobcraft.Mobcraft
 import org.bukkit.Bukkit
 import org.bukkit.command.Command
