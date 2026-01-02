@@ -11,17 +11,18 @@ import org.bench245.mobcraft.listener.RespawnListener
 import org.bukkit.*
 import org.bukkit.attribute.Attribute
 import org.bukkit.command.CommandExecutor
-import org.bukkit.entity.*
+import org.bukkit.entity.DragonFireball
+import org.bukkit.entity.EnderCrystal
+import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
-import org.bukkit.event.block.BlockBreakEvent
 import org.bukkit.event.entity.*
 import org.bukkit.event.player.*
 import org.bukkit.inventory.ItemStack
 import org.bukkit.loot.LootContext.Builder
 import org.bukkit.persistence.PersistentDataType
 import org.bukkit.plugin.java.JavaPlugin
-import java.util.UUID
+import java.util.*
 
 class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
 
@@ -288,7 +289,22 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
     }
     @EventHandler
     fun onJoin(event: PlayerJoinEvent) {
-        enableFlight(event.player)
+        val player = event.player
+        val mob = playerMobMap[player.uniqueId]?.uppercase() ?: return
+
+        when (mob) {
+            "BLAZE" -> mobPowers.onBlazeInitialize(player)
+
+            "GHAST" -> mobPowers.onGhastInitialize(player)
+
+            "ENDER_DRAGON" -> mobPowers.onEnderDragonInitialize(player)
+
+            "ENDERMAN" -> mobPowers.applyEndermanSpeed(player)
+
+            "TUFFGOLEM" -> mobPowers.applyGolemEffects(player)
+
+            "AXOLOTL" -> mobPowers.onAxolotlInitialize(player)
+        }
     }
     @EventHandler
     fun onEntityExplode(event: ExplosionPrimeEvent) {
@@ -299,7 +315,7 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
         val player = event.entity
         val location = player.location
         val damageSource = player.lastDamageCause
-        val random = java.util.Random()
+        val random = Random()
 
         mobPowers.onDragonEggDeath(event)
 
@@ -410,182 +426,4 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
     fun onEntityPickupItem(event: EntityPickupItemEvent) {
         mobPowers.onDragonEggPickup(event)
     }
-
-
-        @EventHandler
-        fun onPlayerDamage(event: EntityDamageByEntityEvent) {
-            val player = event.entity as? Player ?: return
-            val mob = playerMobMap[player.uniqueId]?.uppercase() ?: return
-
-            when (mob) {
-
-                "BLAZE" -> {
-                    // Prevent Blaze hurting Blaze-player
-                    if (event.damager is Blaze) {
-                        event.isCancelled = true
-                    }
-
-                    // 🔥 Call Blaze projectile handler
-                    mobPowers.onBlazeProjectileHit(event)
-                }
-
-                "GHAST" -> {
-                    if (event.damager is Ghast) event.isCancelled = true
-                    mobPowers.onGhastFireballHit(event)
-                }
-
-                "SKELETON" -> {
-                    if (event.damager is Skeleton) event.isCancelled = true
-                }
-
-                "TUFFGOLEM" -> {
-                    mobPowers.onTuffGolemHit(event)
-                }
-
-                "ENDERMAN" -> {
-                    if (event.damager is Enderman)
-                        event.isCancelled = true
-
-                    if (event.damager is Projectile) {
-                        event.isCancelled = true
-                        event.damager.remove()
-
-                        player.world.spawnParticle(
-                            Particle.CRIT,
-                            player.location.add(0.0, 1.0, 0.0),
-                            10,
-                            0.2,
-                            0.2,
-                            0.2,
-                            0.05
-                        )
-                        player.world.playSound(
-                            player.location,
-                            Sound.ENTITY_ITEM_BREAK,
-                            1f,
-                            1f
-                        )
-                    }
-
-                    mobPowers.onEndermanProjectileDamage(event)
-                }
-
-                "ENDER_DRAGON" -> {
-                    if (event.damager is EnderDragon)
-                        event.isCancelled = true
-                }
-
-                "ELDER_GUARDIAN" -> {
-                    if (event.damager is ElderGuardian)
-                        event.isCancelled = true
-                }
-            }
-        }
-
-
-        @EventHandler
-        fun onPlayerMove(event: PlayerMoveEvent) {
-            val player = event.player
-            val mob = playerMobMap[player.uniqueId]?.uppercase() ?: return
-
-            when (mob) {
-                "BLAZE" -> mobPowers.onBlazeMove(event)
-            }
-        }
-
-        @EventHandler
-        fun onDragonEggPickup(event: PlayerPickupItemEvent) {
-            event.player
-            event.item.itemStack
-
-            // Delegate to MobPowers
-            mobPowers.onDragonEggDrop(return)
-        }
-
-        @EventHandler
-        fun onPlayerFall(event: EntityDamageEvent) {
-            val player = event.entity
-            val mob = playerMobMap[player.uniqueId]?.uppercase() ?: return
-
-            when (mob) {
-                "ENDER_DRAGON" -> mobPowers.onDragonFallDamage(event)
-            }
-        }
-
-        @EventHandler
-        fun onEndermanProjectileDamage(event: EntityDamageByEntityEvent) {
-            val target = event.entity as? Player ?: return
-            val mob = playerMobMap[target.uniqueId]?.uppercase() ?: return
-            if (mob != "ENDERMAN") return
-
-            val projectile = event.damager as? Projectile ?: return
-
-            if (projectile !is Arrow) return
-
-            if (mobPowers.canPierceEndermanShield(projectile.shooter)) return
-
-            val key = NamespacedKey(this, "enderman_reflected")
-            if (projectile.persistentDataContainer.has(key, PersistentDataType.BYTE)) return
-
-            event.isCancelled = true
-
-            projectile.persistentDataContainer.set(key, PersistentDataType.BYTE, 1)
-
-            projectile.velocity = projectile.velocity.multiply(-1)
-
-            target.world.spawnParticle(
-                Particle.CRIT,
-                target.location.add(0.0, 1.0, 0.0),
-                15, 0.3, 0.3, 0.3, 0.05
-            )
-
-            target.world.playSound(
-                target.location,
-                Sound.ITEM_SHIELD_BLOCK,
-                1f,
-                1.3f
-            )
-        }
-
-        @EventHandler
-        fun onEntityTarget(event: EntityTargetEvent) {
-            val target = event.target
-            val entity = event.entity
-            if (target !is Player) return
-            val playerMob = playerMobMap[target.uniqueId]?.uppercase() ?: return
-
-            if (entity.type.name == playerMob) {
-                event.isCancelled = true
-            }
-        }
-
-        @EventHandler
-        fun onEntityDamageByEntity(event: EntityDamageByEntityEvent) {
-            val damaged = event.entity
-            val damager = event.damager
-            if (damaged !is Player) return
-            val playerMob = playerMobMap[damaged.uniqueId]?.uppercase() ?: return
-
-            if (damager is LivingEntity && damager !is Player) {
-                if (damager.type.name == playerMob) {
-                    event.isCancelled = true
-                    return
-                }
-            }
-
-            if (damager is Projectile) {
-                val shooter = damager.shooter
-                if (shooter is LivingEntity && shooter !is Player && shooter.type.name == playerMob) {
-                    event.isCancelled = true
-                }
-            }
-        }
-
-        @EventHandler
-        fun onPlayerExplosionDamage(event: EntityDamageEvent) {
-            val entity = event.entity as? Player ?: return
-            val mob = playerMobMap[entity.uniqueId]?.uppercase() ?: return
-
-            if (mob == "GHAST") mobPowers.onGhastFireball(return)
-        }
 }
