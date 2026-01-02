@@ -17,7 +17,7 @@ class GiveItemCompleter(private val plugin: Mobcraft) : TabCompleter {
 
         if (sender !is Player) return emptyList()
 
-        val mobType = plugin.playerMobMap[sender]?.uppercase() ?: run {
+        val mobType = plugin.playerMobMap[sender.uniqueId]?.uppercase() ?: run {
             return emptyList()
         }
         return when (args.size) {

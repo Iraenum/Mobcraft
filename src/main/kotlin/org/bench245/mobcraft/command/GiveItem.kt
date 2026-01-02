@@ -20,7 +20,7 @@ class GiveItem(private val plugin: Mobcraft) : CommandExecutor {
         val player = sender
         var amount: Int
 
-        val mobType = plugin.playerMobMap[player]?.uppercase() ?: run {
+        val mobType = plugin.playerMobMap[player.uniqueId]?.uppercase() ?: run {
             player.sendMessage("§cYou don't have a mob assigned.")
             return true
         }

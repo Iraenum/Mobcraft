@@ -22,7 +22,7 @@ class EnChestCommand(private val plugin: Mobcraft) : CommandExecutor {
 
         val player = sender
 
-        val mob = plugin.playerMobMap[player]?.uppercase()
+        val mob = plugin.playerMobMap[player.uniqueId]?.uppercase()
         if (mob != "TUFFGOLEM") {
             player.sendMessage("§cOnly Tuff Golems can open their ender chest.")
             return true

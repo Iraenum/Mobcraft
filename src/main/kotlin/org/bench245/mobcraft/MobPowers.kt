@@ -67,7 +67,7 @@ class MobPowers(private val plugin: Mobcraft) {
 
     fun onBlazeMove(event: PlayerMoveEvent) {
         val player = event.player
-        val mob = plugin.playerMobMap[player]?.uppercase() ?: return
+        val mob = plugin.playerMobMap[player.uniqueId]?.uppercase() ?: return
         if (mob != "BLAZE") return
 
         // Re-apply fire resistance safely
@@ -82,7 +82,7 @@ class MobPowers(private val plugin: Mobcraft) {
         val player = event.player
         if (player.inventory.itemInMainHand.type != Material.BLAZE_ROD) return
 
-        val mob = plugin.playerMobMap[player]?.uppercase() ?: return
+        val mob = plugin.playerMobMap[player.uniqueId]?.uppercase() ?: return
         if (mob != "BLAZE") return
 
         // LEFT CLICK → Enter combat phase
@@ -186,7 +186,7 @@ class MobPowers(private val plugin: Mobcraft) {
         val player = event.entity as? Player ?: return
         val damager = event.damager
 
-        val mob = plugin.playerMobMap[player]?.uppercase() ?: return
+        val mob = plugin.playerMobMap[player.uniqueId]?.uppercase() ?: return
         if (mob != "BLAZE") return
         if (!blazeCombatActive.contains(player.uniqueId)) return
 
@@ -240,7 +240,7 @@ class MobPowers(private val plugin: Mobcraft) {
 
     fun onEndermanRightClick(event: PlayerInteractEvent) {
         val player = event.player
-        if (plugin.playerMobMap[player]?.equals("ENDERMAN", true) != true) return
+        if (plugin.playerMobMap[player.uniqueId]?.equals("ENDERMAN", true) != true) return
         if (!event.action.name.contains("RIGHT_CLICK")) return
         if (player.inventory.itemInMainHand.type != Material.ENDER_PEARL) return
         event.isCancelled = true
@@ -269,7 +269,7 @@ class MobPowers(private val plugin: Mobcraft) {
     }
     fun onEndermanProjectileDamage(event: EntityDamageByEntityEvent) {
         val target = event.entity as? Player ?: return
-        val mob = plugin.playerMobMap[target]?.uppercase() ?: return
+        val mob = plugin.playerMobMap[target.uniqueId]?.uppercase() ?: return
         if (mob != "ENDERMAN") return
 
         val projectile = event.damager as? Projectile ?: return
@@ -335,7 +335,7 @@ class MobPowers(private val plugin: Mobcraft) {
 
     fun onEnderDragonPotionEffect(event: EntityPotionEffectEvent) {
         val player = event.entity as? Player ?: return
-        if (plugin.playerMobMap[player]?.uppercase() != "ENDER_DRAGON") return
+        if (plugin.playerMobMap[player.uniqueId]?.uppercase() != "ENDER_DRAGON") return
 
         when (event.modifiedType) {
             PotionEffectType.POISON,
@@ -389,7 +389,7 @@ class MobPowers(private val plugin: Mobcraft) {
     fun onEnderDragonRightClick(event: PlayerInteractEvent) {
         val player = event.player
         if (player.inventory.itemInMainHand.type != Material.DRAGON_BREATH) return
-        val mob = plugin.playerMobMap[player]?.uppercase() ?: return
+        val mob = plugin.playerMobMap[player.uniqueId]?.uppercase() ?: return
         if (mob != "ENDER_DRAGON") return
         if (!event.action.name.contains("RIGHT_CLICK")) return
 
@@ -427,7 +427,7 @@ class MobPowers(private val plugin: Mobcraft) {
     fun onEnderDragonExplosion(event: ExplosionPrimeEvent) {
         val fireball = event.entity as? Fireball ?: return
         val shooter = fireball.shooter as? Player ?: return
-        val mob = plugin.playerMobMap[shooter]?.uppercase() ?: return
+        val mob = plugin.playerMobMap[shooter.uniqueId]?.uppercase() ?: return
         if (mob != "ENDER_DRAGON") return
 
         event.radius = 6f // ≈ 10 TNT instead of 20
@@ -474,7 +474,7 @@ class MobPowers(private val plugin: Mobcraft) {
     }
     fun updateEnderDragonBeams() {
         Bukkit.getOnlinePlayers().forEach { player ->
-            val mob = plugin.playerMobMap[player]?.uppercase() ?: return@forEach
+            val mob = plugin.playerMobMap[player.uniqueId]?.uppercase() ?: return@forEach
             if (mob != "ENDER_DRAGON") return@forEach
 
             val crystals = player.getNearbyEntities(100.0, 100.0, 100.0)
@@ -500,7 +500,7 @@ class MobPowers(private val plugin: Mobcraft) {
     fun onDragonFallDamage(event: EntityDamageEvent) {
         if (event.entity !is Player) return
         val player = event.entity as Player
-        val mob = plugin.playerMobMap[player]?.uppercase() ?: return
+        val mob = plugin.playerMobMap[player.uniqueId]?.uppercase() ?: return
         if (mob == "ENDER_DRAGON" && event.cause == EntityDamageEvent.DamageCause.FALL) {
             event.isCancelled = true
         }
@@ -574,12 +574,12 @@ class MobPowers(private val plugin: Mobcraft) {
 
     fun onTuffGolemHit(event: EntityDamageByEntityEvent) {
         val player = event.entity as? Player ?: return
-        if (plugin.playerMobMap[player] != "TUFFGOLEM") return
+        if (plugin.playerMobMap[player.uniqueId] != "TUFFGOLEM") return
     }
 
     fun onTuffGolemDeath(event: PlayerDeathEvent) {
         val player = event.entity
-        if (plugin.playerMobMap[player] == "TUFFGOLEM") {
+        if (plugin.playerMobMap[player.uniqueId] == "TUFFGOLEM") {
             plugin.server.scheduler.runTaskLater(plugin, Runnable {
                 player.spigot().respawn()
             }, 1L)
@@ -600,7 +600,7 @@ class MobPowers(private val plugin: Mobcraft) {
     }
 
     fun openTuffGolemEnderChest(player: Player) {
-        if (plugin.playerMobMap[player] == "TUFFGOLEM") {
+        if (plugin.playerMobMap[player.uniqueId] == "TUFFGOLEM") {
             player.openInventory(player.enderChest)
         } else {
             player.sendMessage("§cOnly Tuff Golems can use this command!")
@@ -629,7 +629,7 @@ class MobPowers(private val plugin: Mobcraft) {
 
     fun onGhastFireball(event: PlayerInteractEvent) {
         val player = event.player
-        if (plugin.playerMobMap[player]?.uppercase() != "GHAST") return
+        if (plugin.playerMobMap[player.uniqueId]?.uppercase() != "GHAST") return
         if (!event.action.name.contains("LEFT_CLICK")) return
 
         val item = player.inventory.itemInMainHand.type
@@ -658,7 +658,7 @@ class MobPowers(private val plugin: Mobcraft) {
 
     fun onGhastFireballHit(event: EntityDamageByEntityEvent) {
         val player = event.entity as? Player ?: return
-        if (plugin.playerMobMap[player]?.uppercase() != "GHAST") return
+        if (plugin.playerMobMap[player.uniqueId]?.uppercase() != "GHAST") return
 
         val fireball = event.damager as? Fireball
         if (fireball != null && fireball.shooter == player) {
@@ -668,7 +668,7 @@ class MobPowers(private val plugin: Mobcraft) {
 
     fun onGhastMove(event: PlayerMoveEvent) {
         val player = event.player
-        val mob = plugin.playerMobMap[player]?.uppercase() ?: return
+        val mob = plugin.playerMobMap[player.uniqueId]?.uppercase() ?: return
         if (mob != "GHAST") return
 
         if (!player.hasPotionEffect(PotionEffectType.FIRE_RESISTANCE)) {
@@ -739,7 +739,7 @@ class MobPowers(private val plugin: Mobcraft) {
         }
         fun onAxolotlDeath(event: PlayerDeathEvent) {
             val player = event.entity
-            if (plugin.playerMobMap[player]?.uppercase() == "AXOLOTL") {
+            if (plugin.playerMobMap[player.uniqueId]?.uppercase() == "AXOLOTL") {
                 plugin.server.scheduler.runTaskLater(plugin, Runnable {
                     player.spigot().respawn()
                 }, 1L)
@@ -811,7 +811,7 @@ class MobPowers(private val plugin: Mobcraft) {
         fun onSkeletonShoot(event: EntityShootBowEvent) {
             val player = event.entity
             if (player !is Player) return
-            if (plugin.playerMobMap[player]?.equals("SKELETON", ignoreCase = true) != true) return
+            if (plugin.playerMobMap[player.uniqueId]?.equals("SKELETON", ignoreCase = true) != true) return
 
             val arrow = event.projectile
             if (arrow !is Arrow) return

@@ -21,7 +21,7 @@ commands:
   giveitem:
     description: Gives a mob-specific item or arrow
     usage: /giveitem <mobType|arrow> [effect] [amount]
-
+    aliases: [gi]
   revive:
     description: Revive a punished player
     usage: /revive <player>
