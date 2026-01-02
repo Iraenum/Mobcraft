@@ -4,7 +4,6 @@ import org.bench245.mobcraft.Mobcraft
 import org.bukkit.*
 import org.bukkit.attribute.Attribute
 import org.bukkit.entity.*
-import org.bukkit.event.block.Action
 import org.bukkit.event.block.BlockBreakEvent
 import org.bukkit.event.entity.*
 import org.bukkit.event.player.*
@@ -107,7 +106,6 @@ class MobPowers(private val plugin: Mobcraft) {
             }
 
             val fireball = player.launchProjectile(SmallFireball::class.java)
-            fireball.isVisualFire = true
             fireball.yield = 0f
 
             player.world.playSound(
@@ -243,7 +241,7 @@ class MobPowers(private val plugin: Mobcraft) {
     fun onEndermanLeftClick(event: PlayerInteractEvent) {
         val player = event.player
         if (plugin.playerMobMap[player]?.equals("ENDERMAN", true) != true) return
-        if (event.action != Action.LEFT_CLICK_AIR && event.action != Action.LEFT_CLICK_BLOCK) return
+        if (!event.action.name.contains("LEFT_CLICK")) return
         if (player.inventory.itemInMainHand.type != Material.ENDER_PEARL) return
         event.isCancelled = true
 
@@ -253,7 +251,7 @@ class MobPowers(private val plugin: Mobcraft) {
         enderPearlCooldowns[player] = now
 
         val targetBlock = player.getTargetBlockExact(128) ?: return
-        var safeLoc = targetBlock.location.add(0.0, 1.0, 0.0)
+        val safeLoc = targetBlock.location.add(0.0, 1.0, 0.0)
 
         repeat(7) {
             val feet = safeLoc.block
