@@ -2,18 +2,22 @@ package org.bench245.mobcraft.command
 
 import org.bench245.mobcraft.Mobcraft
 import org.bukkit.Material
+import org.bukkit.NamespacedKey
 import org.bukkit.command.Command
 import org.bukkit.command.CommandExecutor
 import org.bukkit.command.CommandSender
 import org.bukkit.enchantments.Enchantment
 import org.bukkit.entity.Player
+import org.bukkit.event.Listener
 import org.bukkit.inventory.ItemStack
 import org.bukkit.inventory.meta.PotionMeta
 import org.bukkit.potion.PotionEffect
 import org.bukkit.potion.PotionEffectType
 import org.bukkit.ChatColor
 
-class GiveItem(private val plugin: Mobcraft) : CommandExecutor {
+class GiveItem(private val plugin: Mobcraft) : CommandExecutor, Listener {
+
+    private val DRAGON_EGG_KEY = NamespacedKey(plugin, "bound_dragon_egg")
 
     override fun onCommand(
         sender: CommandSender,
@@ -31,7 +35,7 @@ class GiveItem(private val plugin: Mobcraft) : CommandExecutor {
 
         if (args.isEmpty()) {
             player.sendMessage(
-                "§cUsage: /giveitem <amount> OR /giveitem bow <amount> OR /giveitem arrow <effect> <amount> OR /giveitem ghast <tear|gunpowder> <amount>"
+                "§cUsage: /giveitem <amount> OR /giveitem bow <amount> OR /giveitem arrow <effect> <amount> OR /giveitem ghast <tear|gunpowder> <amount> OR /giveitem enderdragon <breath|portal_frames|egg> <amount>"
             )
             return true
         }
@@ -39,7 +43,7 @@ class GiveItem(private val plugin: Mobcraft) : CommandExecutor {
         val first = args[0].lowercase()
 
         when {
-            // SKELETON-specific bow
+            // Skeleton bow
             first == "bow" -> {
                 if (mobType != "SKELETON") {
                     player.sendMessage("§cOnly skeletons can receive this bow.")
@@ -50,7 +54,7 @@ class GiveItem(private val plugin: Mobcraft) : CommandExecutor {
                 return true
             }
 
-            // SKELETON-specific arrows
+            // Skeleton arrows
             first == "arrow" || first == "arrows" -> {
                 if (mobType != "SKELETON") {
                     player.sendMessage("§cOnly skeletons can receive tipped arrows this way.")
@@ -74,7 +78,7 @@ class GiveItem(private val plugin: Mobcraft) : CommandExecutor {
                 return true
             }
 
-            // GHAST-specific items
+            // Ghast items
             first == "ghast" -> {
                 if (mobType != "GHAST") {
                     player.sendMessage("§cOnly Ghasts can use this command.")
@@ -95,7 +99,30 @@ class GiveItem(private val plugin: Mobcraft) : CommandExecutor {
                 return true
             }
 
-            // Default: give standard mob items by amount
+            // Ender Dragon items
+            first == "enderdragon" || first == "ender_dragon" -> {
+                if (mobType != "ENDERDRAGON" && mobType != "ENDER_DRAGON") {
+                    player.sendMessage("§cOnly Ender Dragons can use this command.")
+                    return true
+                }
+
+                if (args.size < 3) {
+                    player.sendMessage("§cUsage: /giveitem enderdragon <breath|portal_frames|egg> <amount>")
+                    return true
+                }
+
+                val type = args[1].lowercase()
+                val amount = args[2].toIntOrNull() ?: 1
+
+                when (type) {
+                    "breath", "dragon_breath" -> giveItem(player, Material.DRAGON_BREATH, amount)
+                    "portal_frames", "end_portal_frames", "frame" -> giveItem(player, Material.END_PORTAL_FRAME, amount)
+                    "egg", "dragon_egg" -> repeat(amount) { giveDragonEgg(player) }
+                    else -> player.sendMessage("§cInvalid type. Use breath, portal_frames, or egg.")
+                }
+                return true
+            }
+
             else -> {
                 val amount = first.toIntOrNull() ?: run {
                     player.sendMessage(
@@ -140,9 +167,7 @@ class GiveItem(private val plugin: Mobcraft) : CommandExecutor {
 
     private fun giveTippedArrows(player: Player, effect: PotionEffectType, amount: Int) {
         val arrow = ItemStack(Material.TIPPED_ARROW, amount)
-        val meta = arrow.itemMeta as? PotionMeta
-
-        if (meta == null) {
+        val meta = arrow.itemMeta as? PotionMeta ?: run {
             player.inventory.addItem(arrow)
             player.sendMessage("§cCould not apply potion meta, gave plain arrows.")
             return
@@ -157,4 +182,15 @@ class GiveItem(private val plugin: Mobcraft) : CommandExecutor {
         player.inventory.addItem(arrow)
         player.sendMessage("§aYou received §e$amount ${effect.name} tipped arrows§a!")
     }
-}
+
+    private fun giveDragonEgg(player: Player) {
+        val egg = ItemStack(Material.DRAGON_EGG, 1)
+        val meta = egg.itemMeta ?: return
+        meta.setDisplayName("§5Dragon Egg")
+        meta.persistentDataContainer.set(DRAGON_EGG_KEY, org.bukkit.persistence.PersistentDataType.BYTE, 1)
+        egg.itemMeta = meta
+        player.inventory.addItem(egg)
+        player.sendMessage("§dYou received a bound Dragon Egg!")
+    }
+
+        }

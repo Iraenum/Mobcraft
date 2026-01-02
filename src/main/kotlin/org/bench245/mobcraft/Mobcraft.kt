@@ -8,25 +8,21 @@ import org.bench245.mobcraft.data.PunishmentManager
 import org.bench245.mobcraft.data.TimerTask
 import org.bench245.mobcraft.listener.DeathListener
 import org.bench245.mobcraft.listener.RespawnListener
-import org.bukkit.Bukkit
-import org.bukkit.Material
-import org.bukkit.NamespacedKey
 import org.bukkit.command.CommandExecutor
-import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
-import org.bukkit.event.block.Action
 import org.bukkit.event.block.BlockBreakEvent
 import org.bukkit.event.entity.*
 import org.bukkit.inventory.ItemStack
 import org.bukkit.loot.LootContext.Builder
 import org.bukkit.plugin.java.JavaPlugin
 import org.bench245.mobcraft.command.EnChestTabCompleter
+import org.bukkit.*
 import org.bukkit.attribute.Attribute
-import org.bukkit.entity.EnderCrystal
-import org.bukkit.entity.LivingEntity
-import org.bukkit.entity.Projectile
+import org.bukkit.entity.*
+import org.bukkit.event.block.Action
 import org.bukkit.event.player.*
+import org.bukkit.persistence.PersistentDataType
 
 class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
 
@@ -40,8 +36,9 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
     private val flightCommand = Flight(this)
     private val setMob = SetMob(this)
     private val giveItem = GiveItem(this)
-
-    private lateinit var punishmentManager: PunishmentManager
+    private val DRAGON_EGG_KEY = NamespacedKey(this, "bound_dragon_egg")
+    lateinit var punishmentManager: PunishmentManager
+        private set
     private lateinit var enChest: EnChestCommand
 
     lateinit var mobPowers: MobPowers
@@ -81,8 +78,9 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
             tabCompleter = SetMobCompleter(this@Mobcraft)
         }
 
+        val reviveCommand = ReviveCommand(punishmentManager)
         getCommand("revive")?.apply {
-            setExecutor(punishmentManager)
+            setExecutor(reviveCommand)
             tabCompleter = ReviveCommandCompleter(punishmentManager)
         }
 
@@ -90,6 +88,7 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
             setExecutor(enChest)
             tabCompleter = EnChestTabCompleter()
         }
+
 
         // Start punishment timer
         TimerTask(this, punishmentManager).runTaskTimer(this, 20L, 1200L)
@@ -101,6 +100,7 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
     override fun onDisable() {
         saveMobcraftConfig()
     }
+
     private fun loadMobcraftConfig() {
         mobsToPreventLoot.clear()
         mobsToPreventLoot.addAll(config.getStringList("mobsToPreventLoot"))
@@ -114,6 +114,7 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
         config.set("flyingPlayers", flyingPlayers.toList())
         saveConfig()
     }
+
     fun initializeMob(player: Player, mob: String) {
 
         mobPowers.resetPlayerState(player)
@@ -121,9 +122,7 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
             "ENDERMAN" -> mobPowers.onEndermanInitialize(player)
             "BLAZE" -> mobPowers.onBlazeInitialize(player)
             "ENDER_DRAGON" -> mobPowers.onEnderDragonInitialize(player)
-            "ELDER_GUARDIAN" -> mobPowers.onElderGuardianInitialize(player)
             "GHAST" -> mobPowers.onGhastInitialize(player)
-            "SKELETON" -> mobPowers.onSkeletonInitialize(player)
             "TUFFGOLEM" -> mobPowers.onTuffGolemInitialize(player)
             "AXOLOTL" -> mobPowers.onAxolotlInitialize(player)
         }
@@ -132,6 +131,7 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
     fun setPlayerMob(player: Player, mob: String) {
         playerMobMap[player] = mob
     }
+
     fun resetPlayerState(player: Player) {
         for (effect in player.activePotionEffects) {
             player.removePotionEffect(effect.type)
@@ -164,7 +164,6 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
             }
     }
 
-
     fun getPlayerMob(player: Player): String {
         return playerMobMap.getOrDefault(player, "none")
     }
@@ -187,21 +186,40 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
             event.drops.clear()
         }
     }
+
     @EventHandler
     fun onPlayerRespawn(event: PlayerRespawnEvent) {
         val player = event.player
         val mob = playerMobMap[player]?.uppercase() ?: return
 
         Bukkit.getScheduler().runTaskLater(this, Runnable {
+
+            // 🔓 Override punishment for specific mobs
+            if (mob == "TUFFGOLEM" || mob == "AXOLOTL") {
+                punishmentManager.unpunish(player)
+                resetPlayerState(player)
+            }
+
+            // ✈ Flight-enabled mobs
             if (mob in listOf("BLAZE", "GHAST", "ENDER_DRAGON")) {
                 enableFlight(player)
             }
 
+            // 🧬 Apply mob-specific respawn effects
             when (mob) {
                 "BLAZE" -> mobPowers.applyBlazeEffects(player)
 
                 "ENDERMAN" -> mobPowers.onEndermanRespawn(event)
+
+                "ENDER_DRAGON" -> mobPowers.applyDragonEffects(player)
+
+                "TUFFGOLEM" -> mobPowers.applyGolemEffects(player)
+
+                "GHAST" -> mobPowers.applyGhastEffects(player)
+
+                "AXOLOTL" -> mobPowers.applyAxolotlEffects(player)
             }
+
         }, 1L)
     }
     @EventHandler
@@ -218,6 +236,7 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
                     enableFlight(player)
                     player.flySpeed = 0.1f
                 }
+
                 else -> {
                     when (mob) {
                         "BLAZE" -> {
@@ -225,25 +244,33 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
                             player.flySpeed = 0.03f
                             mobPowers.onBlazeGamemodeChange(event)
                             mobPowers.applyBlazeEffects(player)
-
                         }
+
                         "GHAST" -> {
                             enableFlight(player)
-                            player.flySpeed = 0.03f
+                            player.flySpeed = 0.08f
+                            mobPowers.applyGhastEffects(player)
                         }
+
                         "ENDER_DRAGON" -> {
                             enableFlight(player)
                             player.flySpeed = 0.1f
+                            mobPowers.applyDragonEffects(player)
                         }
+
                         "ENDERMAN" -> mobPowers.applyEndermanSpeed(player)
+
+                        "TUFFGOLEM" -> {
+                            mobPowers.applyGolemEffects(player)
+                        }
+
+                        "AXOLOTL" -> {
+                            mobPowers.applyAxolotlEffects(player)
+                        }
                     }
                 }
             }
         }, 1L)
-    }
-    @EventHandler
-    fun onSkeletonShoot(event: EntityShootBowEvent) {
-        mobPowers.onSkeletonShoot(event)
     }
     @EventHandler
     fun onJoin(event: PlayerJoinEvent) {
@@ -256,6 +283,8 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
         val location = player.location
         val damageSource = player.lastDamageCause
         val random = java.util.Random()
+
+        mobPowers.onDragonEggDeath(event)
 
         val key = playerMobMap[player] ?: "none"
         val contextBuilder = Builder(location).lootedEntity(player)
@@ -295,195 +324,276 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
                 mobPowers.onTuffGolemDeath(event)
                 player.world.dropItemNaturally(location, ItemStack(Material.TUFF, 64))
             }
-            "AXOLOTL" -> mobPowers.onAxolotlDeath(event)
+
             "SKELETON" -> player.world.dropItemNaturally(location, ItemStack(Material.BONE, 64))
             "ENDERMAN" -> repeat(4) {
                 player.world.dropItemNaturally(location, ItemStack(Material.ENDER_PEARL, 64))
             }
+
             "ENDER_DRAGON" -> player.world.dropItemNaturally(location, ItemStack(Material.DRAGON_BREATH, 64))
             "BLAZE" -> repeat(2) {
                 player.world.dropItemNaturally(location, ItemStack(Material.BLAZE_ROD, 64))
             }
+
             "GHAST" -> {
                 repeat(2) {
                     player.world.dropItemNaturally(location, ItemStack(Material.GHAST_TEAR, 64))
                 }
                 player.world.dropItemNaturally(location, ItemStack(Material.GUNPOWDER, 64))
             }
+
             "GUARDIAN", "ELDER_GUARDIAN" -> {
                 player.world.dropItemNaturally(location, ItemStack(Material.SPONGE, 64))
                 player.world.dropItemNaturally(location, ItemStack(Material.PRISMARINE, 64))
             }
         }
     }
+
     @EventHandler
-    fun onPlayerRightClick(event: PlayerInteractEvent) {
+    fun onPlayerInteract(event: PlayerInteractEvent) {
         val player = event.player
         val mob = playerMobMap[player]?.uppercase() ?: return
 
         when (mob) {
             "BLAZE" -> mobPowers.onBlazeRightClick(event)
-            "ENDERMAN" -> mobPowers.onEndermanRightClick(event)
+
             "GHAST" -> mobPowers.onGhastFireball(event)
-            "ELDER_GUARDIAN" -> mobPowers.onElderGuardianLaser(event)
 
-            "TUFFGOLEM" -> {
-                if (event.action == Action.RIGHT_CLICK_AIR || event.action == Action.RIGHT_CLICK_BLOCK) {
-                    mobPowers.openTuffGolemEnderChest(player)
-                    event.isCancelled = true
-                }
-            }
-        }
-    }
-
-    @EventHandler
-    fun onPlayerDamage(event: EntityDamageByEntityEvent) {
-        val player = event.entity as? Player ?: return
-        val mob = playerMobMap[player]?.uppercase() ?: return
-
-        when (mob) {
-
-            "BLAZE" -> {
-                // Prevent Blaze hurting Blaze-player
-                if (event.damager is org.bukkit.entity.Blaze) {
-                    event.isCancelled = true
-                }
-
-                // 🔥 Call Blaze projectile handler
-                mobPowers.onBlazeProjectileHit(event)
-            }
-
-            "GHAST" -> {
-                if (event.damager is org.bukkit.entity.Ghast) event.isCancelled = true
-                mobPowers.onGhastSelfDamage(event)
-            }
-
-            "SKELETON" -> {
-                if (event.damager is org.bukkit.entity.Skeleton) event.isCancelled = true
-            }
-
-            "TUFFGOLEM" -> {
-                mobPowers.onTuffGolemHit(event)
-            }
+            "ENDER_DRAGON" -> mobPowers.onEnderDragonRightClick(event)
 
             "ENDERMAN" -> {
-                if (event.damager is org.bukkit.entity.Enderman)
-                    event.isCancelled = true
+                when (event.action) {
+                    Action.LEFT_CLICK_AIR,
+                    Action.LEFT_CLICK_BLOCK -> mobPowers.onEndermanLeftClick(event)
+                    else -> {}
+                }
+            }
+        }
+    }
+    @EventHandler
+    fun onDragonEggDrop(event: PlayerDropItemEvent) {
+        val item = event.itemDrop.itemStack
+        val meta = item.itemMeta ?: return
+        mobPowers.onDragonEggDrop(event)
 
-                if (event.damager is org.bukkit.entity.Projectile) {
-                    event.isCancelled = true
-                    event.damager.remove()
+        if (meta.persistentDataContainer.has(DRAGON_EGG_KEY, org.bukkit.persistence.PersistentDataType.BYTE)) {
+            event.isCancelled = true
+            event.player.sendMessage("§cYou cannot drop a Dragon Egg.")
+        }
 
-                    player.world.spawnParticle(
-                        org.bukkit.Particle.CRIT,
-                        player.location.add(0.0, 1.0, 0.0),
-                        10,
-                        0.2,
-                        0.2,
-                        0.2,
-                        0.05
-                    )
-                    player.world.playSound(
-                        player.location,
-                        org.bukkit.Sound.ENTITY_ITEM_BREAK,
-                        1f,
-                        1f
-                    )
+    }
+
+    @EventHandler
+    fun onEntityPickupItem(event: EntityPickupItemEvent) {
+        mobPowers.onDragonEggPickup(event)
+    }
+
+
+        @EventHandler
+        fun onPlayerDamage(event: EntityDamageByEntityEvent) {
+            val player = event.entity as? Player ?: return
+            val mob = playerMobMap[player]?.uppercase() ?: return
+
+            when (mob) {
+
+                "BLAZE" -> {
+                    // Prevent Blaze hurting Blaze-player
+                    if (event.damager is org.bukkit.entity.Blaze) {
+                        event.isCancelled = true
+                    }
+
+                    // 🔥 Call Blaze projectile handler
+                    mobPowers.onBlazeProjectileHit(event)
                 }
 
-                mobPowers.onEndermanProjectileDamage(event)
-            }
+                "GHAST" -> {
+                    if (event.damager is org.bukkit.entity.Ghast) event.isCancelled = true
+                    mobPowers.onGhastFireballHit(event)
+                }
 
-            "ENDER_DRAGON" -> {
-                if (event.damager is org.bukkit.entity.EnderDragon)
-                    event.isCancelled = true
-            }
+                "SKELETON" -> {
+                    if (event.damager is org.bukkit.entity.Skeleton) event.isCancelled = true
+                }
 
-            "ELDER_GUARDIAN" -> {
-                if (event.damager is org.bukkit.entity.ElderGuardian)
-                    event.isCancelled = true
+                "TUFFGOLEM" -> {
+                    mobPowers.onTuffGolemHit(event)
+                }
+
+                "ENDERMAN" -> {
+                    if (event.damager is org.bukkit.entity.Enderman)
+                        event.isCancelled = true
+
+                    if (event.damager is org.bukkit.entity.Projectile) {
+                        event.isCancelled = true
+                        event.damager.remove()
+
+                        player.world.spawnParticle(
+                            org.bukkit.Particle.CRIT,
+                            player.location.add(0.0, 1.0, 0.0),
+                            10,
+                            0.2,
+                            0.2,
+                            0.2,
+                            0.05
+                        )
+                        player.world.playSound(
+                            player.location,
+                            org.bukkit.Sound.ENTITY_ITEM_BREAK,
+                            1f,
+                            1f
+                        )
+                    }
+
+                    mobPowers.onEndermanProjectileDamage(event)
+                }
+
+                "ENDER_DRAGON" -> {
+                    if (event.damager is org.bukkit.entity.EnderDragon)
+                        event.isCancelled = true
+                }
+
+                "ELDER_GUARDIAN" -> {
+                    if (event.damager is org.bukkit.entity.ElderGuardian)
+                        event.isCancelled = true
+                }
             }
         }
-    }
 
+
+        @EventHandler
+        fun onPlayerMove(event: PlayerMoveEvent) {
+            val player = event.player
+            val mob = playerMobMap[player]?.uppercase() ?: return
+
+            when (mob) {
+                "BLAZE" -> mobPowers.onBlazeMove(event)
+            }
+        }
+
+        @EventHandler
+        fun onDragonEggPickup(event: PlayerPickupItemEvent) {
+            val player = event.player
+            val item = event.item.itemStack
+
+            // Delegate to MobPowers
+            mobPowers.onDragonEggDrop(return)
+        }
 
     @EventHandler
-    fun onPlayerMove(event: PlayerMoveEvent) {
+    fun onPlayerConsume(event: PlayerItemConsumeEvent) {
         val player = event.player
         val mob = playerMobMap[player]?.uppercase() ?: return
 
         when (mob) {
-            "SKELETON" -> mobPowers.onSkeletonTick(player)
-            "BLAZE" -> mobPowers.onBlazeMove(event)
+            "GHAST" -> mobPowers.onGhastDrinkMilk(event)
         }
     }
 
-    @EventHandler
-    fun onPlayerFall(event: EntityDamageEvent) {
-        val player = event.entity
-        val mob = playerMobMap[player]?.uppercase() ?: return
+        @EventHandler
+        fun onPlayerFall(event: EntityDamageEvent) {
+            val player = event.entity
+            val mob = playerMobMap[player]?.uppercase() ?: return
 
-        when (mob) {
-            "ENDER_DRAGON" -> mobPowers.onDragonFallDamage(event)
+            when (mob) {
+                "ENDER_DRAGON" -> mobPowers.onDragonFallDamage(event)
+                "GHAST" -> mobPowers.onGhastDamage(event)
+            }
         }
-    }
-    @EventHandler
-    fun onEntityTarget(event: EntityTargetEvent) {
-        val target = event.target
-        val entity = event.entity
-        if (target !is Player) return
-        val playerMob = playerMobMap[target]?.uppercase() ?: return
 
-        if (entity.type.name == playerMob) {
+        @EventHandler
+        fun onEndermanProjectileDamage(event: EntityDamageByEntityEvent) {
+            val target = event.entity as? Player ?: return
+            val mob = playerMobMap[target]?.uppercase() ?: return
+            if (mob != "ENDERMAN") return
+
+            val projectile = event.damager as? Projectile ?: return
+
+            if (projectile !is Arrow) return
+
+            if (mobPowers.canPierceEndermanShield(projectile.shooter)) return
+
+            val key = NamespacedKey(this, "enderman_reflected")
+            if (projectile.persistentDataContainer.has(key, PersistentDataType.BYTE)) return
+
             event.isCancelled = true
-        }
-    }
-    @EventHandler
-    fun onEntityDamageByEntity(event: EntityDamageByEntityEvent) {
-        val damaged = event.entity
-        val damager = event.damager
-        if (damaged !is Player) return
-        val playerMob = playerMobMap[damaged]?.uppercase() ?: return
 
-        if (damager is LivingEntity && damager !is Player) {
-            if (damager.type.name == playerMob) {
+            projectile.persistentDataContainer.set(key, PersistentDataType.BYTE, 1)
+
+            projectile.velocity = projectile.velocity.multiply(-1)
+
+            target.world.spawnParticle(
+                Particle.CRIT,
+                target.location.add(0.0, 1.0, 0.0),
+                15, 0.3, 0.3, 0.3, 0.05
+            )
+
+            target.world.playSound(
+                target.location,
+                Sound.ITEM_SHIELD_BLOCK,
+                1f,
+                1.3f
+            )
+        }
+
+        @EventHandler
+        fun onEntityTarget(event: EntityTargetEvent) {
+            val target = event.target
+            val entity = event.entity
+            if (target !is Player) return
+            val playerMob = playerMobMap[target]?.uppercase() ?: return
+
+            if (entity.type.name == playerMob) {
                 event.isCancelled = true
-                return
             }
         }
 
-        if (damager is Projectile) {
-            val shooter = damager.shooter
-            if (shooter is LivingEntity && shooter !is Player && shooter.type.name == playerMob) {
-                event.isCancelled = true
+        @EventHandler
+        fun onEntityDamageByEntity(event: EntityDamageByEntityEvent) {
+            val damaged = event.entity
+            val damager = event.damager
+            if (damaged !is Player) return
+            val playerMob = playerMobMap[damaged]?.uppercase() ?: return
+
+            if (damager is LivingEntity && damager !is Player) {
+                if (damager.type.name == playerMob) {
+                    event.isCancelled = true
+                    return
+                }
+            }
+
+            if (damager is Projectile) {
+                val shooter = damager.shooter
+                if (shooter is LivingEntity && shooter !is Player && shooter.type.name == playerMob) {
+                    event.isCancelled = true
+                }
             }
         }
+
+        @EventHandler
+        fun onPlayerBreak(event: BlockBreakEvent) {
+
+        }
+
+        @EventHandler
+        fun onPlayerExplosionDamage(event: EntityDamageEvent) {
+            val entity = event.entity as? Player ?: return
+            val mob = playerMobMap[entity]?.uppercase() ?: return
+
+            if (mob == "GHAST") mobPowers.onGhastFireball(return)
+        }
+
+        @EventHandler
+        fun onPlayerMobJoin(event: PlayerJoinEvent) {
+            val player = event.player
+            val mob = playerMobMap[player]?.uppercase() ?: return
+
+            if (mob == "ENDERMAN") mobPowers.onEndermanJoin(event)
+
+            server.pluginManager.registerEvents(object : Listener {
+                @EventHandler
+                fun onProjectileHit(event: ProjectileHitEvent) {
+                    mobPowers.onEndermanProjectileDamage(return)
+                }
+            }, this)
+        }
     }
-    @EventHandler
-    fun onPlayerBreak(event: BlockBreakEvent) {
-
-    }
-
-    @EventHandler
-    fun onPlayerExplosionDamage(event: EntityDamageEvent) {
-        val entity = event.entity as? Player ?: return
-        val mob = playerMobMap[entity]?.uppercase() ?: return
-
-        if (mob == "GHAST") mobPowers.onGhastExplosionDamage(event)
-    }
-
-    @EventHandler
-    fun onPlayerMobJoin(event: PlayerJoinEvent) {
-        val player = event.player
-        val mob = playerMobMap[player]?.uppercase() ?: return
-
-        if (mob == "ENDERMAN") mobPowers.onEndermanJoin(event)
-
-        server.pluginManager.registerEvents(object : Listener {
-            @EventHandler
-            fun onProjectileHit(event: ProjectileHitEvent) {
-                mobPowers.onEndermanProjectileHit(event)
-            }
-        }, this)
-    }
-}

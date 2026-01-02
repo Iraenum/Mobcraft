@@ -37,6 +37,9 @@ class GiveItemCompleter(private val plugin: Mobcraft) : TabCompleter {
     // GHAST subcommands
     private val ghastItems = listOf("tear", "gunpowder")
 
+    // ENDER_DRAGON subcommands
+    private val enderDragonItems = listOf("breath", "portal_frames", "egg")
+
     override fun onTabComplete(
         sender: CommandSender,
         command: Command,
@@ -49,18 +52,15 @@ class GiveItemCompleter(private val plugin: Mobcraft) : TabCompleter {
         return when (args.size) {
             1 -> {
                 // Suggest mob types, BOW, or ARROW
-                mobTypes.filter { it.startsWith(args[0].uppercase()) }
+                mobTypes.filter { it.startsWith(args[0].lowercase()) }
             }
             2 -> {
-                // Suggest GHAST sub-items if first argument is GHAST
-                if (args[0].equals("GHAST", true)) {
-                    ghastItems.filter { it.startsWith(args[1].lowercase()) }
-                }
-                // Suggest potion effects if first argument is ARROW
-                else if (args[0].equals("ARROW", true)) {
-                    arrowEffects.filter { it.startsWith(args[1].uppercase()) }
-                } else {
-                    emptyList()
+                when {
+                    args[0].equals("ghast", true) -> ghastItems.filter { it.startsWith(args[1].lowercase()) }
+                    args[0].equals("arrow", true) -> arrowEffects.filter { it.startsWith(args[1].lowercase()) }
+                    args[0].equals("ender_dragon", true) || args[0].equals("enderdragon", true) ->
+                        enderDragonItems.filter { it.startsWith(args[1].lowercase()) }
+                    else -> emptyList()
                 }
             }
             else -> emptyList()
