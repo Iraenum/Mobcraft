@@ -312,7 +312,6 @@ class MobPowers(private val plugin: Mobcraft) {
         )
     }
     // ----------------------- ENDER DRAGON -------------------------
-
     fun onEnderDragonInitialize(player: Player) {
         plugin.mobsToPreventLoot.add("ENDER_DRAGON")
         plugin.enableFlight(player)
@@ -337,24 +336,21 @@ class MobPowers(private val plugin: Mobcraft) {
         }
     }
 
-    @EventHandler
-    fun onEnderDragonPotionDamage(event: EntityPotionEffectEvent) {
+    fun onEnderDragonPotionEffect(event: EntityPotionEffectEvent) {
         val player = event.entity as? Player ?: return
-        val mob = plugin.playerMobMap[player]?.uppercase() ?: return
-        if (mob != "ENDER_DRAGON") return
+        if (plugin.playerMobMap[player]?.uppercase() != "ENDER_DRAGON") return
 
         when (event.modifiedType) {
             PotionEffectType.POISON,
             PotionEffectType.WITHER,
-            PotionEffectType.WITHER,
             PotionEffectType.BLINDNESS,
             PotionEffectType.SLOWNESS,
             PotionEffectType.MINING_FATIGUE,
+            PotionEffectType.INSTANT_DAMAGE,
             PotionEffectType.WEAKNESS -> event.isCancelled = true
-
+            else -> {}
         }
     }
-
     fun onDragonEggDrop(event: PlayerDropItemEvent) {
         val item = event.itemDrop.itemStack
         val meta = item.itemMeta ?: return
@@ -415,27 +411,70 @@ class MobPowers(private val plugin: Mobcraft) {
     }
 
     private fun shootPurpleFireball(player: Player) {
-        val world = player.world
         val eyeLocation = player.eyeLocation
-        val lookDirection = eyeLocation.direction.normalize()
+        val direction = eyeLocation.direction.normalize()
 
-        val fireball = world.spawn(
-            eyeLocation.add(lookDirection.multiply(1.0)),
-            Fireball::class.java
+        player.world.spawn(
+            eyeLocation.add(direction),
+            DragonFireball::class.java
         ) {
-            it.setIsIncendiary(true)
-            it.yield = 10f
-            it.direction = lookDirection
-            it.velocity = lookDirection.multiply(2)
+            it.velocity = direction.multiply(1.5)
             it.shooter = player
+            it.persistentDataContainer.set(
+                NamespacedKey(plugin, "dragon_fireball"),
+                PersistentDataType.BYTE,
+                1
+            )
         }
+    }
+    fun onEnderDragonExplosion(event: ExplosionPrimeEvent) {
+        val fireball = event.entity as? Fireball ?: return
+        val shooter = fireball.shooter as? Player ?: return
+        val mob = plugin.playerMobMap[shooter]?.uppercase() ?: return
+        if (mob != "ENDER_DRAGON") return
 
-        Bukkit.getScheduler().runTaskLater(plugin as org.bukkit.plugin.java.JavaPlugin, Runnable {
-            dragonAbilityCooldown.remove(player)
-            player.sendMessage("§aFireball ready!")
-        }, 60L)
+        event.radius = 6f // ≈ 10 TNT instead of 20
+
+        val loc = fireball.location
+        val world = loc.world ?: return
+
+        Bukkit.getScheduler().runTask(plugin, Runnable {
+            world.spawnParticle(Particle.EXPLOSION_EMITTER, loc, 1)
+            world.spawnParticle(Particle.FLAME, loc, 200, 1.5, 1.5, 1.5, 0.05)
+            world.spawnParticle(Particle.DRAGON_BREATH, loc, 150, 1.5, 1.5, 1.5, 0.02)
+        })
     }
 
+
+    fun onDragonFireballHit(event: ProjectileHitEvent) {
+        val fireball = event.entity as? DragonFireball ?: return
+
+        val key = NamespacedKey(plugin, "dragon_fireball")
+        if (!fireball.persistentDataContainer.has(key, PersistentDataType.BYTE)) return
+
+        val loc = fireball.location
+        val world = loc.world ?: return
+        world.createExplosion(
+            loc.x,
+            loc.y,
+            loc.z,
+            10f,
+            true,
+            true
+        )
+        val cloud = world.spawn(loc, AreaEffectCloud::class.java)
+        cloud.radius = 6f
+        cloud.duration = 200
+        cloud.radiusPerTick = -0.02f
+        cloud.reapplicationDelay = 10
+        cloud.particle = Particle.DRAGON_BREATH
+        cloud.addCustomEffect(
+            PotionEffect(PotionEffectType.POISON, 1, 1),
+            true
+        )
+
+        fireball.remove()
+    }
     fun updateEnderDragonBeams() {
         Bukkit.getOnlinePlayers().forEach { player ->
             val mob = plugin.playerMobMap[player]?.uppercase() ?: return@forEach

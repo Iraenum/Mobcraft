@@ -49,6 +49,8 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
             mobPowers.updateEnderDragonBeams()
         }, 1L, 1L)
 
+        server.pluginManager.registerEvents(this, this)
+
         punishmentManager = PunishmentManager(this)
         enChest = EnChestCommand(this)
         mobPowers = MobPowers(this)
@@ -276,7 +278,10 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
     fun onJoin(event: PlayerJoinEvent) {
         enableFlight(event.player)
     }
-
+    @EventHandler
+    fun onEntityExplode(event: ExplosionPrimeEvent) {
+        mobPowers.onEnderDragonExplosion(event)
+    }
     @EventHandler
     fun onPlayerDeath(event: PlayerDeathEvent) {
         val player = event.entity
@@ -369,6 +374,18 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
                 }
             }
         }
+    }
+    @EventHandler
+    fun onProjectileHit(event: ProjectileHitEvent) {
+        val projectile = event.entity
+
+        if (projectile is DragonFireball) {
+            mobPowers.onDragonFireballHit(event)
+        }
+    }
+    @EventHandler
+    fun onEnderDragonPotionEffect(event: EntityPotionEffectEvent) {
+        mobPowers.onEnderDragonPotionEffect(event)
     }
     @EventHandler
     fun onDragonEggDrop(event: PlayerDropItemEvent) {

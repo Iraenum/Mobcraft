@@ -21,8 +21,6 @@ commands:
   giveitem:
     description: Gives a mob-specific item or arrow
     usage: /giveitem <mobType|arrow> [effect] [amount]
-    permission: mobcraft.giveitem
-    permission-message: "You cannot use this command."
 
   revive:
     description: Revive a punished player
