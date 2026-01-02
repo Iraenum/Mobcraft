@@ -238,10 +238,10 @@ class MobPowers(private val plugin: Mobcraft) {
     fun onEndermanJoin(event: PlayerJoinEvent) = applyEndermanSpeed(event.player)
     fun onEndermanRespawn(event: PlayerRespawnEvent) = applyEndermanSpeed(event.player)
 
-    fun onEndermanLeftClick(event: PlayerInteractEvent) {
+    fun onEndermanRightClick(event: PlayerInteractEvent) {
         val player = event.player
         if (plugin.playerMobMap[player]?.equals("ENDERMAN", true) != true) return
-        if (!event.action.name.contains("LEFT_CLICK")) return
+        if (!event.action.name.contains("RIGHT_CLICK")) return
         if (player.inventory.itemInMainHand.type != Material.ENDER_PEARL) return
         event.isCancelled = true
 
