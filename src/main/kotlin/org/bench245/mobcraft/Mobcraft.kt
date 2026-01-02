@@ -77,7 +77,7 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
 
         getCommand("setmob")?.apply {
             setExecutor(setMob)
-            tabCompleter = SetMobCompleter(this@Mobcraft)
+            tabCompleter = SetMobCompleter()
         }
 
         val reviveCommand = ReviveCommand(punishmentManager)
