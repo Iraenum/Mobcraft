@@ -2,16 +2,15 @@ package org.bench245.mobcraft.command.MobCraft.MobPowers
 
 import org.bench245.mobcraft.Mobcraft
 import org.bukkit.*
-import org.bukkit.potion.PotionEffect
-import org.bukkit.potion.PotionEffectType
 import org.bukkit.attribute.Attribute
 import org.bukkit.entity.*
-import org.bukkit.event.EventHandler
 import org.bukkit.event.block.Action
 import org.bukkit.event.block.BlockBreakEvent
 import org.bukkit.event.entity.*
 import org.bukkit.event.player.*
 import org.bukkit.persistence.PersistentDataType
+import org.bukkit.potion.PotionEffect
+import org.bukkit.potion.PotionEffectType
 import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.util.Vector
 import java.util.*
@@ -59,7 +58,7 @@ class MobPowers(private val plugin: Mobcraft) {
         player.flySpeed = 0.03F
 
         player.addPotionEffect(
-            PotionEffect(PotionEffectType.FIRE_RESISTANCE, Int.MAX_VALUE, 0, false, false, false)
+            PotionEffect(PotionEffectType.FIRE_RESISTANCE, -1, 0, false, false, false)
         )
     }
 
@@ -75,7 +74,7 @@ class MobPowers(private val plugin: Mobcraft) {
         // Re-apply fire resistance safely
         if (!player.hasPotionEffect(PotionEffectType.FIRE_RESISTANCE)) {
             player.addPotionEffect(
-                PotionEffect(PotionEffectType.FIRE_RESISTANCE, Int.MAX_VALUE, 0, false, false, false)
+                PotionEffect(PotionEffectType.FIRE_RESISTANCE, -1, 0, false, false, false)
             )
         }
     }
@@ -108,7 +107,7 @@ class MobPowers(private val plugin: Mobcraft) {
             }
 
             val fireball = player.launchProjectile(SmallFireball::class.java)
-            fireball.setVisualFire(true)
+            fireball.isVisualFire = true
             fireball.yield = 0f
 
             player.world.playSound(
@@ -318,20 +317,20 @@ class MobPowers(private val plugin: Mobcraft) {
         player.flySpeed = 0.1F
 
         // Permanent buffs
-        player.addPotionEffect(PotionEffect(PotionEffectType.FIRE_RESISTANCE, Int.MAX_VALUE, 0))
-        player.addPotionEffect(PotionEffect(PotionEffectType.WATER_BREATHING, Int.MAX_VALUE, 0))
+        player.addPotionEffect(PotionEffect(PotionEffectType.FIRE_RESISTANCE, -1, 0))
+        player.addPotionEffect(PotionEffect(PotionEffectType.WATER_BREATHING, -1, 0))
     }
 
     fun applyDragonEffects(player: Player) {
         if (!player.hasPotionEffect(PotionEffectType.FIRE_RESISTANCE)) {
             player.addPotionEffect(
-                PotionEffect(PotionEffectType.FIRE_RESISTANCE, Int.MAX_VALUE, 0, false, false, false)
+                PotionEffect(PotionEffectType.FIRE_RESISTANCE, -1, 0, false, false, false)
             )
         }
 
         if (!player.hasPotionEffect(PotionEffectType.WATER_BREATHING)) {
             player.addPotionEffect(
-                PotionEffect(PotionEffectType.WATER_BREATHING, Int.MAX_VALUE, 0, false, false, false)
+                PotionEffect(PotionEffectType.WATER_BREATHING, -1, 0, false, false, false)
             )
         }
     }
@@ -354,7 +353,7 @@ class MobPowers(private val plugin: Mobcraft) {
     fun onDragonEggDrop(event: PlayerDropItemEvent) {
         val item = event.itemDrop.itemStack
         val meta = item.itemMeta ?: return
-        if (meta.persistentDataContainer.has(DRAGON_EGG_KEY, org.bukkit.persistence.PersistentDataType.BYTE)) {
+        if (meta.persistentDataContainer.has(DRAGON_EGG_KEY, PersistentDataType.BYTE)) {
             event.isCancelled = true
             event.player.sendMessage("§cYou cannot drop a Dragon Egg.")
         }
@@ -367,7 +366,7 @@ class MobPowers(private val plugin: Mobcraft) {
         while (iterator.hasNext()) {
             val item = iterator.next()
             val meta = item.itemMeta ?: continue
-            if (meta.persistentDataContainer.has(DRAGON_EGG_KEY, org.bukkit.persistence.PersistentDataType.BYTE)) {
+            if (meta.persistentDataContainer.has(DRAGON_EGG_KEY, PersistentDataType.BYTE)) {
                 iterator.remove()
                 val dropped = player.world.dropItemNaturally(player.location, item)
                 eggOwners[dropped] = player.uniqueId
@@ -565,7 +564,7 @@ class MobPowers(private val plugin: Mobcraft) {
         player.addPotionEffect(
             PotionEffect(
                 PotionEffectType.RESISTANCE,
-                Int.MAX_VALUE,
+                -1,
                 3, // Resistance IV
                 false,
                 false,
@@ -593,7 +592,7 @@ class MobPowers(private val plugin: Mobcraft) {
         player.addPotionEffect(
             PotionEffect(
                 PotionEffectType.RESISTANCE,
-                Int.MAX_VALUE,
+                -1,
                 3,
                 false,
                 false,
@@ -619,13 +618,13 @@ class MobPowers(private val plugin: Mobcraft) {
         player.flySpeed = 0.08F
         applyGhastEffects(player)
         player.addPotionEffect(
-            PotionEffect(PotionEffectType.FIRE_RESISTANCE, Int.MAX_VALUE, 0, false, false, false))
+            PotionEffect(PotionEffectType.FIRE_RESISTANCE, -1, 0, false, false, false))
     }
 
     fun applyGhastEffects(player: Player) {
         if (!player.hasPotionEffect(PotionEffectType.FIRE_RESISTANCE)) {
             player.addPotionEffect(
-                PotionEffect(PotionEffectType.FIRE_RESISTANCE, Int.MAX_VALUE, 0, false, false, false)
+                PotionEffect(PotionEffectType.FIRE_RESISTANCE, -1, 0, false, false, false)
             )
         }
     }
@@ -633,7 +632,7 @@ class MobPowers(private val plugin: Mobcraft) {
     fun onGhastFireball(event: PlayerInteractEvent) {
         val player = event.player
         if (plugin.playerMobMap[player]?.uppercase() != "GHAST") return
-        if (!event.action.name.contains("RIGHT_CLICK")) return
+        if (!event.action.name.contains("LEFT_CLICK")) return
 
         val item = player.inventory.itemInMainHand.type
         if (item != Material.GHAST_TEAR && item != Material.GUNPOWDER) return
@@ -647,7 +646,8 @@ class MobPowers(private val plugin: Mobcraft) {
         val fireball = player.world.spawn(player.eyeLocation.add(direction), Fireball::class.java)
         fireball.velocity = direction.multiply(0.25)
         fireball.yield = 4f
-        fireball.setIsIncendiary(true)
+        fireball.isIncendiary
+        fireball.shooter = player
 
         val blockBelow = player.location.clone().add(0.0, -1.0, 0.0).block
         if (!blockBelow.isPassable) {
@@ -656,20 +656,6 @@ class MobPowers(private val plugin: Mobcraft) {
         }
 
         player.world.playSound(player.location, "minecraft:entity.ghast.shoot", 1f, 1f)
-    }
-
-    fun onGhastDamage(event: EntityDamageEvent) {
-        val player = event.entity as? Player ?: return
-        if (plugin.playerMobMap[player]?.uppercase() != "GHAST") return
-
-        if (
-            event.cause == EntityDamageEvent.DamageCause.ENTITY_EXPLOSION ||
-            event.cause == EntityDamageEvent.DamageCause.BLOCK_EXPLOSION ||
-            event.cause == EntityDamageEvent.DamageCause.FIRE ||
-            event.cause == EntityDamageEvent.DamageCause.FIRE_TICK
-        ) {
-            event.isCancelled = true
-        }
     }
 
     fun onGhastFireballHit(event: EntityDamageByEntityEvent) {
@@ -682,29 +668,30 @@ class MobPowers(private val plugin: Mobcraft) {
         }
     }
 
-    fun onGhastDrinkMilk(event: PlayerItemConsumeEvent) {
+    fun onGhastMove(event: PlayerMoveEvent) {
         val player = event.player
-        if (plugin.playerMobMap[player]?.uppercase() != "GHAST") return
-        if (event.item.type != Material.MILK_BUCKET) return
+        val mob = plugin.playerMobMap[player]?.uppercase() ?: return
+        if (mob != "GHAST") return
 
-        Bukkit.getScheduler().runTask(plugin, Runnable {
-            applyGhastEffects(player)
-        })
+        if (!player.hasPotionEffect(PotionEffectType.FIRE_RESISTANCE)) {
+            player.addPotionEffect(
+                PotionEffect(PotionEffectType.FIRE_RESISTANCE, -1, 0, false, false, false)
+            )
+        }
     }
-
 
     // ----------------------- AXOLOTL -------------------------------
 
     fun onAxolotlInitialize(player: Player) {
         plugin.mobsToPreventLoot.add("AXOLOTL")
-        player.addPotionEffect(PotionEffect(PotionEffectType.REGENERATION, Int.MAX_VALUE, 1))
-        player.addPotionEffect(PotionEffect(PotionEffectType.WATER_BREATHING, Int.MAX_VALUE, 0))
+        player.addPotionEffect(PotionEffect(PotionEffectType.REGENERATION, -1, 1))
+        player.addPotionEffect(PotionEffect(PotionEffectType.WATER_BREATHING, -1, 0))
         player.addPotionEffect(PotionEffect(PotionEffectType.CONDUIT_POWER, 40, 0, false, false, false))
 
         player.addPotionEffect(
             PotionEffect(
                 PotionEffectType.DOLPHINS_GRACE,
-                Int.MAX_VALUE,
+                -1,
                 0,
                 false, false, false
             )
@@ -738,18 +725,18 @@ class MobPowers(private val plugin: Mobcraft) {
     fun applyAxolotlEffects(player: Player) {
         if (!player.hasPotionEffect(PotionEffectType.REGENERATION)) {
             player.addPotionEffect(
-                PotionEffect(PotionEffectType.REGENERATION, Int.MAX_VALUE, 0, false, false, false)
+                PotionEffect(PotionEffectType.REGENERATION, -1, 0, false, false, false)
             )
         }
 
         if (!player.hasPotionEffect(PotionEffectType.WATER_BREATHING)) {
             player.addPotionEffect(
-                PotionEffect(PotionEffectType.WATER_BREATHING, Int.MAX_VALUE, 0, false, false, false)
+                PotionEffect(PotionEffectType.WATER_BREATHING, -1, 0, false, false, false)
             )
         }
         if (!player.hasPotionEffect(PotionEffectType.DOLPHINS_GRACE)) {
             player.addPotionEffect(
-                PotionEffect(PotionEffectType.DOLPHINS_GRACE, Int.MAX_VALUE, 0, false, false, false)
+                PotionEffect(PotionEffectType.DOLPHINS_GRACE, -1, 0, false, false, false)
             )
         }
         fun onAxolotlDeath(event: PlayerDeathEvent) {
@@ -764,8 +751,8 @@ class MobPowers(private val plugin: Mobcraft) {
         // ----------------------- ELDER GUARDIAN -----------------------
         fun onElderGuardianInitialize(player: Player) {
             plugin.mobsToPreventLoot.add("ELDER_GUARDIAN")
-            player.addPotionEffect(PotionEffect(PotionEffectType.RESISTANCE, Int.MAX_VALUE, 0))
-            player.addPotionEffect(PotionEffect(PotionEffectType.WATER_BREATHING, Int.MAX_VALUE, 0))
+            player.addPotionEffect(PotionEffect(PotionEffectType.RESISTANCE, -1, 0))
+            player.addPotionEffect(PotionEffect(PotionEffectType.WATER_BREATHING, -1, 0))
 
             object : BukkitRunnable() {
                 override fun run() {

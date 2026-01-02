@@ -234,7 +234,7 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
 
         Bukkit.getScheduler().runTaskLater(this, Runnable {
             when (player.gameMode) {
-                org.bukkit.GameMode.SPECTATOR -> {
+                GameMode.SPECTATOR -> {
                     enableFlight(player)
                     player.flySpeed = 0.1f
                 }
@@ -308,7 +308,7 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
                 Bukkit.getOnlinePlayers().forEach { p ->
                     p.playSound(
                         player.location,
-                        org.bukkit.Sound.ENTITY_LIGHTNING_BOLT_THUNDER,
+                        Sound.ENTITY_LIGHTNING_BOLT_THUNDER,
                         1.5f,
                         1.0f
                     )
@@ -393,7 +393,7 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
         val meta = item.itemMeta ?: return
         mobPowers.onDragonEggDrop(event)
 
-        if (meta.persistentDataContainer.has(DRAGON_EGG_KEY, org.bukkit.persistence.PersistentDataType.BYTE)) {
+        if (meta.persistentDataContainer.has(DRAGON_EGG_KEY, PersistentDataType.BYTE)) {
             event.isCancelled = true
             event.player.sendMessage("§cYou cannot drop a Dragon Egg.")
         }
@@ -415,7 +415,7 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
 
                 "BLAZE" -> {
                     // Prevent Blaze hurting Blaze-player
-                    if (event.damager is org.bukkit.entity.Blaze) {
+                    if (event.damager is Blaze) {
                         event.isCancelled = true
                     }
 
@@ -424,12 +424,12 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
                 }
 
                 "GHAST" -> {
-                    if (event.damager is org.bukkit.entity.Ghast) event.isCancelled = true
+                    if (event.damager is Ghast) event.isCancelled = true
                     mobPowers.onGhastFireballHit(event)
                 }
 
                 "SKELETON" -> {
-                    if (event.damager is org.bukkit.entity.Skeleton) event.isCancelled = true
+                    if (event.damager is Skeleton) event.isCancelled = true
                 }
 
                 "TUFFGOLEM" -> {
@@ -437,15 +437,15 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
                 }
 
                 "ENDERMAN" -> {
-                    if (event.damager is org.bukkit.entity.Enderman)
+                    if (event.damager is Enderman)
                         event.isCancelled = true
 
-                    if (event.damager is org.bukkit.entity.Projectile) {
+                    if (event.damager is Projectile) {
                         event.isCancelled = true
                         event.damager.remove()
 
                         player.world.spawnParticle(
-                            org.bukkit.Particle.CRIT,
+                            Particle.CRIT,
                             player.location.add(0.0, 1.0, 0.0),
                             10,
                             0.2,
@@ -455,7 +455,7 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
                         )
                         player.world.playSound(
                             player.location,
-                            org.bukkit.Sound.ENTITY_ITEM_BREAK,
+                            Sound.ENTITY_ITEM_BREAK,
                             1f,
                             1f
                         )
@@ -465,12 +465,12 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
                 }
 
                 "ENDER_DRAGON" -> {
-                    if (event.damager is org.bukkit.entity.EnderDragon)
+                    if (event.damager is EnderDragon)
                         event.isCancelled = true
                 }
 
                 "ELDER_GUARDIAN" -> {
-                    if (event.damager is org.bukkit.entity.ElderGuardian)
+                    if (event.damager is ElderGuardian)
                         event.isCancelled = true
                 }
             }
@@ -484,27 +484,18 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
 
             when (mob) {
                 "BLAZE" -> mobPowers.onBlazeMove(event)
+                "GHAST" -> mobPowers.onGhastMove(event)
             }
         }
 
         @EventHandler
         fun onDragonEggPickup(event: PlayerPickupItemEvent) {
-            val player = event.player
-            val item = event.item.itemStack
+            event.player
+            event.item.itemStack
 
             // Delegate to MobPowers
             mobPowers.onDragonEggDrop(return)
         }
-
-    @EventHandler
-    fun onPlayerConsume(event: PlayerItemConsumeEvent) {
-        val player = event.player
-        val mob = playerMobMap[player]?.uppercase() ?: return
-
-        when (mob) {
-            "GHAST" -> mobPowers.onGhastDrinkMilk(event)
-        }
-    }
 
         @EventHandler
         fun onPlayerFall(event: EntityDamageEvent) {
@@ -513,7 +504,6 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
 
             when (mob) {
                 "ENDER_DRAGON" -> mobPowers.onDragonFallDamage(event)
-                "GHAST" -> mobPowers.onGhastDamage(event)
             }
         }
 
@@ -584,11 +574,6 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
                     event.isCancelled = true
                 }
             }
-        }
-
-        @EventHandler
-        fun onPlayerBreak(event: BlockBreakEvent) {
-
         }
 
         @EventHandler
