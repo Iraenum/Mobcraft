@@ -9,7 +9,7 @@ class SetMobCompleter() : TabCompleter {
     private val mobs = listOf("axolotl", "blaze", "ender_dragon", "enderman","ghast","tuffgolem")
     override fun onTabComplete(sender: CommandSender, command: Command, label: String, args: Array<out String>): List<String?>? {
         val suggestions = mutableListOf<String>()
-        if (args.isEmpty()) {
+        if (args.size < 2) {
             suggestions.addAll(Bukkit.getOnlinePlayers().map { it.name })
         } else if (args.size == 2) {
             suggestions.addAll(mobs)
