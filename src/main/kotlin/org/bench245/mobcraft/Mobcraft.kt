@@ -34,6 +34,7 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
     private val flightCommand = Flight(this)
     private val setMob = SetMob(this)
     private val giveItem = GiveItem(this)
+    private val mountCommand = MountCommand(this)
     private val dragonEggKey = NamespacedKey(this, "bound_dragon_egg")
     lateinit var punishmentManager: PunishmentManager
         private set
@@ -85,6 +86,11 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
         getCommand("enchest")?.apply {
             setExecutor(enChest)
             tabCompleter = EnChestTabCompleter()
+        }
+
+        getCommand("mount")?.apply {
+            setExecutor(mountCommand)
+            tabCompleter = MountCommandTabCompleter()
         }
 
 
