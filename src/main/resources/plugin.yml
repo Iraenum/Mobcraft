@@ -30,6 +30,7 @@ commands:
   enchest:
     description: Opens your ender chest if you are a Tuff Golem
     usage: /enchest
+
   mount:
     description: Mounts a player if you are a Ghast
     usage: /mount
