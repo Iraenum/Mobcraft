@@ -4,7 +4,6 @@ import org.bench245.mobcraft.Mobcraft
 import org.bukkit.*
 import org.bukkit.attribute.Attribute
 import org.bukkit.entity.*
-import org.bukkit.event.block.BlockBreakEvent
 import org.bukkit.event.entity.*
 import org.bukkit.event.player.*
 import org.bukkit.persistence.PersistentDataType
@@ -18,7 +17,7 @@ class MobPowers(private val plugin: Mobcraft) {
 
     private val dragonAbilityCooldown = mutableSetOf<Player>()
 
-    private val DRAGON_EGG_KEY = NamespacedKey(plugin, "bound_dragon_egg")
+    private val dragonEggKey = NamespacedKey(plugin, "bound_dragon_egg")
 
     private val eggOwners = WeakHashMap<Item, UUID>()
 
@@ -203,10 +202,6 @@ class MobPowers(private val plugin: Mobcraft) {
         }
     }
 
-    fun onBlazeRespawn(event: PlayerRespawnEvent) {
-        resetBlaze(event.player)
-    }
-
     fun onBlazeGamemodeChange(event: PlayerGameModeChangeEvent) {
         if (event.newGameMode == GameMode.SPECTATOR) {
             resetBlaze(event.player)
@@ -223,7 +218,7 @@ class MobPowers(private val plugin: Mobcraft) {
         return shooter is Blaze || shooter is EnderDragon
     }
 
-    private val REFLECTED_KEY = NamespacedKey(plugin, "enderman_reflected")
+    private val reflectedKey = NamespacedKey(plugin, "enderman_reflected")
     private val enderPearlCooldowns = mutableMapOf<Player, Long>()
 
     fun onEndermanInitialize(player: Player) {
@@ -235,7 +230,6 @@ class MobPowers(private val plugin: Mobcraft) {
         player.getAttribute(Attribute.MOVEMENT_SPEED)?.baseValue = 0.14
     }
 
-    fun onEndermanJoin(event: PlayerJoinEvent) = applyEndermanSpeed(event.player)
     fun onEndermanRespawn(event: PlayerRespawnEvent) = applyEndermanSpeed(event.player)
 
     fun onEndermanRightClick(event: PlayerInteractEvent) {
@@ -275,7 +269,7 @@ class MobPowers(private val plugin: Mobcraft) {
         val projectile = event.damager as? Projectile ?: return
         if (projectile !is Arrow) return
 
-        if (projectile.persistentDataContainer.has(REFLECTED_KEY, PersistentDataType.BYTE)) {
+        if (projectile.persistentDataContainer.has(reflectedKey, PersistentDataType.BYTE)) {
             return
         }
 
@@ -288,7 +282,7 @@ class MobPowers(private val plugin: Mobcraft) {
         event.isCancelled = true
 
         projectile.persistentDataContainer.set(
-            REFLECTED_KEY,
+            reflectedKey,
             PersistentDataType.BYTE,
             1
         )
@@ -351,7 +345,7 @@ class MobPowers(private val plugin: Mobcraft) {
     fun onDragonEggDrop(event: PlayerDropItemEvent) {
         val item = event.itemDrop.itemStack
         val meta = item.itemMeta ?: return
-        if (meta.persistentDataContainer.has(DRAGON_EGG_KEY, PersistentDataType.BYTE)) {
+        if (meta.persistentDataContainer.has(dragonEggKey, PersistentDataType.BYTE)) {
             event.isCancelled = true
             event.player.sendMessage("§cYou cannot drop a Dragon Egg.")
         }
@@ -364,7 +358,7 @@ class MobPowers(private val plugin: Mobcraft) {
         while (iterator.hasNext()) {
             val item = iterator.next()
             val meta = item.itemMeta ?: continue
-            if (meta.persistentDataContainer.has(DRAGON_EGG_KEY, PersistentDataType.BYTE)) {
+            if (meta.persistentDataContainer.has(dragonEggKey, PersistentDataType.BYTE)) {
                 iterator.remove()
                 val dropped = player.world.dropItemNaturally(player.location, item)
                 eggOwners[dropped] = player.uniqueId
@@ -459,16 +453,7 @@ class MobPowers(private val plugin: Mobcraft) {
             true,
             true
         )
-        val cloud = world.spawn(loc, AreaEffectCloud::class.java)
-        cloud.radius = 6f
-        cloud.duration = 200
-        cloud.radiusPerTick = -0.02f
-        cloud.reapplicationDelay = 10
-        cloud.particle = Particle.DRAGON_BREATH
-        cloud.addCustomEffect(
-            PotionEffect(PotionEffectType.POISON, 1, 1),
-            true
-        )
+
 
         fireball.remove()
     }
@@ -506,54 +491,13 @@ class MobPowers(private val plugin: Mobcraft) {
         }
     }
 
-    fun onEnderDragonBreak(event: BlockBreakEvent) {
+    fun onEnderDragonBreak(event: PlayerInteractEvent) {
+        if (!event.action.name.contains("LEFT_CLICK_BLOCK")) return
+        val block = event.clickedBlock ?: return
+        if (block.type != Material.END_PORTAL_FRAME && block.type != Material.END_PORTAL) return
         val player = event.player
-        if (event.block.type != Material.END_PORTAL_FRAME) return
-        val key = strongholdKey(event.block.location)
-        val visited = getVisitedStrongholds(player)
-
-        if (visited.contains(key)) {
-            player.sendMessage("§dYou shatter the End Portal Frame with your ancient might!")
-            rememberStronghold(player, key)
-        } else {
-            player.sendMessage("§4This portal is foreign to you... you cannot destroy it yet.")
-            event.isCancelled = true
-        }
-    }
-
-    private fun rememberStronghold(player: Player, key: String) {
-        val data = player.persistentDataContainer
-        val strongholdKey = NamespacedKey(plugin, "visited_strongholds")
-        val current = data.get(strongholdKey, PersistentDataType.STRING) ?: ""
-        if (!current.contains(key)) {
-            val updated = if (current.isEmpty()) key else "$current,$key"
-            data.set(strongholdKey, PersistentDataType.STRING, updated)
-        }
-    }
-
-    private fun getVisitedStrongholds(player: Player): List<String> {
-        val data = player.persistentDataContainer
-        val strongholdKey = NamespacedKey(plugin, "visited_strongholds")
-        val stored = data.get(strongholdKey, PersistentDataType.STRING) ?: ""
-        return stored.split(",").filter { it.isNotBlank() }
-    }
-
-    private fun isInStronghold(loc: Location): Boolean {
-        val world = loc.world ?: return false
-        val nearbyFrames = (loc.blockY - 16..loc.blockY + 16).flatMap { y ->
-            (-16..16).flatMap { dx ->
-                (-16..16).mapNotNull { dz ->
-                    val block = world.getBlockAt(loc.blockX + dx, y, loc.blockZ + dz)
-                    if (block.type == Material.END_PORTAL_FRAME) block else null
-                }
-            }
-        }
-        return nearbyFrames.size >= 3
-    }
-
-    private fun strongholdKey(loc: Location): String {
-        val chunk = loc.chunk
-        return "${chunk.world.name}_${chunk.x shr 2}_${chunk.z shr 2}"
+        block.breakNaturally(player.inventory.itemInMainHand)
+        player.playSound(player.location,Sound.BLOCK_GLASS_BREAK, 1.5f, 1.0f)
     }
 
     // ----------------------- TUFF GOLEM ---------------------------
@@ -613,7 +557,7 @@ class MobPowers(private val plugin: Mobcraft) {
     fun onGhastInitialize(player: Player) {
         plugin.mobsToPreventLoot.add("GHAST")
         plugin.enableFlight(player)
-        player.flySpeed = 0.08F
+        player.flySpeed = 0.09F
         applyGhastEffects(player)
         player.addPotionEffect(
             PotionEffect(PotionEffectType.FIRE_RESISTANCE, -1, 0, false, false, false))
@@ -647,12 +591,6 @@ class MobPowers(private val plugin: Mobcraft) {
         fireball.isIncendiary
         fireball.shooter = player
 
-        val blockBelow = player.location.clone().add(0.0, -1.0, 0.0).block
-        if (!blockBelow.isPassable) {
-            player.velocity = player.velocity.clone().add(Vector(0.0, 2.5, 0.0))
-            player.world.playSound(player.location, Sound.ENTITY_GHAST_WARN, 1f, 0.8f)
-        }
-
         player.world.playSound(player.location, "minecraft:entity.ghast.shoot", 1f, 1f)
     }
 
@@ -662,6 +600,7 @@ class MobPowers(private val plugin: Mobcraft) {
 
         val fireball = event.damager as? Fireball
         if (fireball != null && fireball.shooter == player) {
+            player.velocity = player.velocity.clone().add(Vector(0.0, 2.5, 0.0))
             event.isCancelled = true
         }
     }

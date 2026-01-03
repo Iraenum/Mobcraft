@@ -9,12 +9,9 @@ import org.bench245.mobcraft.data.TimerTask
 import org.bench245.mobcraft.listener.DeathListener
 import org.bench245.mobcraft.listener.RespawnListener
 import org.bukkit.*
-import org.bukkit.entity.*
 import org.bukkit.attribute.Attribute
 import org.bukkit.command.CommandExecutor
-import org.bukkit.entity.DragonFireball
-import org.bukkit.entity.EnderCrystal
-import org.bukkit.entity.Player
+import org.bukkit.entity.*
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.entity.*
@@ -37,7 +34,7 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
     private val flightCommand = Flight(this)
     private val setMob = SetMob(this)
     private val giveItem = GiveItem(this)
-    private val DRAGON_EGG_KEY = NamespacedKey(this, "bound_dragon_egg")
+    private val dragonEggKey = NamespacedKey(this, "bound_dragon_egg")
     lateinit var punishmentManager: PunishmentManager
         private set
     private lateinit var enChest: EnChestCommand
@@ -49,8 +46,6 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
         Bukkit.getScheduler().runTaskTimer(this, Runnable {
             mobPowers.updateEnderDragonBeams()
         }, 1L, 1L)
-
-        server.pluginManager.registerEvents(this, this)
 
         punishmentManager = PunishmentManager(this)
         enChest = EnChestCommand(this)
@@ -264,7 +259,7 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
 
                         "GHAST" -> {
                             enableFlight(player)
-                            player.flySpeed = 0.08f
+                            player.flySpeed = 0.09f
                             mobPowers.applyGhastEffects(player)
                         }
 
@@ -316,11 +311,9 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
         val player = event.entity
         val location = player.location
         val damageSource = player.lastDamageCause
-        val random = Random()
 
         mobPowers.onDragonEggDeath(event)
 
-        val key = playerMobMap[player.uniqueId] ?: "none"
         val contextBuilder = Builder(location).lootedEntity(player)
         enableFlight(player)
 
@@ -343,13 +336,6 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
                     )
                 }
             }
-        }
-
-        val context = contextBuilder.build()
-        val lootTable = server.getLootTable(NamespacedKey("minecraft", key))
-
-        lootTable?.populateLoot(random, context)?.forEach {
-            location.world.dropItemNaturally(location, it)
         }
 
         val mob = playerMobMap[player.uniqueId]?.uppercase() ?: return
@@ -393,7 +379,7 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
 
             "GHAST" -> mobPowers.onGhastFireball(event)
 
-            "ENDER_DRAGON" -> mobPowers.onEnderDragonRightClick(event)
+            "ENDER_DRAGON" -> {mobPowers.onEnderDragonRightClick(event); mobPowers.onEnderDragonBreak(event)}
 
             "ENDERMAN" -> mobPowers.onEndermanRightClick(event)
             }
@@ -416,7 +402,7 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
         val meta = item.itemMeta ?: return
         mobPowers.onDragonEggDrop(event)
 
-        if (meta.persistentDataContainer.has(DRAGON_EGG_KEY, PersistentDataType.BYTE)) {
+        if (meta.persistentDataContainer.has(dragonEggKey, PersistentDataType.BYTE)) {
             event.isCancelled = true
             event.player.sendMessage("§cYou cannot drop a Dragon Egg.")
         }
@@ -427,11 +413,11 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
     fun onEntityPickupItem(event: EntityPickupItemEvent) {
         mobPowers.onDragonEggPickup(event)
     }
+
     @EventHandler
     fun onPlayerDamage(event: EntityDamageByEntityEvent) {
         val player = event.entity as? Player ?: return
         val mob = playerMobMap[player.uniqueId]?.uppercase() ?: return
-
         when (mob) {
 
             "BLAZE" -> {
@@ -488,6 +474,11 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
             "ENDER_DRAGON" -> {
                 if (event.damager is EnderDragon)
                     event.isCancelled = true
+
+                if (event.damager is AreaEffectCloud) {
+                    val cloud = event.damager as AreaEffectCloud
+                    if (cloud.particle == Particle.DRAGON_BREATH) event.isCancelled = true
+                }
             }
 
             "ELDER_GUARDIAN" -> {
@@ -505,16 +496,8 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
 
         when (mob) {
             "BLAZE" -> mobPowers.onBlazeMove(event)
+            "GHAST" -> mobPowers.onGhastMove(event)
         }
-    }
-
-    @EventHandler
-    fun onDragonEggPickup(event: PlayerPickupItemEvent) {
-        event.player
-        event.item.itemStack
-
-        // Delegate to MobPowers
-        mobPowers.onDragonEggDrop(return)
     }
 
     @EventHandler
@@ -594,13 +577,5 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
                 event.isCancelled = true
             }
         }
-    }
-
-    @EventHandler
-    fun onPlayerExplosionDamage(event: EntityDamageEvent) {
-        val entity = event.entity as? Player ?: return
-        val mob = playerMobMap[entity.uniqueId]?.uppercase() ?: return
-
-        if (mob == "GHAST") mobPowers.onGhastFireball(return)
     }
 }
