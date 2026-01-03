@@ -34,7 +34,7 @@ class MountCommand (private val plugin: Mobcraft) : CommandExecutor {
         val nearbyEntities = player.getNearbyEntities(10.0, 10.0, 10.0)
             .filter { it != player }
             .filter { it.passengers.isEmpty() }
-            .filter { it.location.distance(location) <= 10.0 }
+            .filter { it.location.distance(location) <= 2.0 }
             .filter { it !is ArmorStand && it !is Projectile }
             .filter { it.vehicle != player }
 
