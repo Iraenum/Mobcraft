@@ -39,7 +39,7 @@ class MountCommand (private val plugin: Mobcraft) : CommandExecutor {
             .filter { it.vehicle != player }
 
         if (nearbyEntities.isEmpty()) {
-            player.sendMessage("§cNo entities found within 10 blocks.")
+            player.sendMessage("§cNo entities found within 2 blocks.")
             return true
         }
 
