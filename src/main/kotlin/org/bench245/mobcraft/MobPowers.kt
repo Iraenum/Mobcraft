@@ -664,6 +664,9 @@ class MobPowers(private val plugin: Mobcraft) {
             player.addPotionEffect(
                 PotionEffect(PotionEffectType.FIRE_RESISTANCE, -1, 0, false, false, false)
             )
+            player.addPotionEffect(
+                PotionEffect(PotionEffectType.REGENERATION, -1, 0, false, false, false)
+            )
         }
     }
 
