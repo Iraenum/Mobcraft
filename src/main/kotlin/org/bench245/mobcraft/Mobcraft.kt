@@ -325,10 +325,6 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
                 logger.info("Killer: $killer")
                 contextBuilder.killer(killer)
 
-                // lightning effect
-                val world = player.world
-                world.strikeLightning(player.location)
-
                 Bukkit.getOnlinePlayers().forEach { p ->
                     p.playSound(
                         player.location,
