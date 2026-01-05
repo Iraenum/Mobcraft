@@ -655,6 +655,9 @@ class MobPowers(private val plugin: Mobcraft) {
         player.addPotionEffect(
             PotionEffect(PotionEffectType.FIRE_RESISTANCE, -1, 0, false, false, false)
         )
+        player.addPotionEffect(
+            PotionEffect(PotionEffectType.REGENERATION, -1, 0, false, false, false)
+        )
     }
 
     fun applyGhastEffects(player: Player) {
@@ -755,7 +758,7 @@ class MobPowers(private val plugin: Mobcraft) {
     fun applyAxolotlEffects(player: Player) {
         if (!player.hasPotionEffect(PotionEffectType.REGENERATION)) {
             player.addPotionEffect(
-                PotionEffect(PotionEffectType.REGENERATION, -1, 0, false, false, false)
+                PotionEffect(PotionEffectType.REGENERATION, -1, 1, false, false, false)
             )
         }
 
