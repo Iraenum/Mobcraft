@@ -14,7 +14,7 @@ class SetMob(private val plugin: Mobcraft) : CommandExecutor {
             val player = Bukkit.getPlayer(args[0])!!
             plugin.initializeMob(player,mob)
 
-            plugin.setPlayerMob(player, args[1])
+            plugin.setPlayerMob(player, mob)
             plugin.takenMobs.add(args[1])
             return true
         }
