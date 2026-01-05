@@ -12,6 +12,7 @@ import org.bukkit.potion.PotionEffectType
 import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.util.Vector
 import java.util.*
+import kotlin.random.Random
 
 class MobPowers(private val plugin: Mobcraft) {
 
@@ -257,6 +258,8 @@ class MobPowers(private val plugin: Mobcraft) {
             if (!feet.type.isSolid && !head.type.isSolid) return@repeat
             safeLoc.add(0.0, 1.0, 0.0)
         }
+
+        if (Random.nextInt(0, 100) >= 95) player.world.spawn(player.location, Endermite::class.java)
 
         safeLoc.yaw = player.location.yaw
         safeLoc.pitch = player.location.pitch
