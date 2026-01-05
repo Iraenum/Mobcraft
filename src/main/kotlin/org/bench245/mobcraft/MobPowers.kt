@@ -21,6 +21,8 @@ class MobPowers(private val plugin: Mobcraft) {
 
     private val eggOwners = WeakHashMap<Item, UUID>()
 
+    private val elderGuardianFatigueCooldown = mutableSetOf<Player>()
+
     fun resetPlayerState(player: Player) {
 
         player.activePotionEffects.forEach {
@@ -119,13 +121,13 @@ class MobPowers(private val plugin: Mobcraft) {
     fun applyBlazeEffects(player: Player) {
         if (!player.hasPotionEffect(PotionEffectType.FIRE_RESISTANCE)) {
             player.addPotionEffect(
-                PotionEffect(PotionEffectType.STRENGTH, 200, 0, false, false, false)
+                PotionEffect(PotionEffectType.STRENGTH, 200, 1, false, false, false)
             )
         }
 
         if (!player.hasPotionEffect(PotionEffectType.STRENGTH)) {
             player.addPotionEffect(
-                PotionEffect(PotionEffectType.STRENGTH, 200, 0, false, false, false)
+                PotionEffect(PotionEffectType.STRENGTH, 200, 1, false, false, false)
             )
         }
     }
@@ -146,7 +148,7 @@ class MobPowers(private val plugin: Mobcraft) {
 
         // Strength I for 10 seconds
         player.addPotionEffect(
-            PotionEffect(PotionEffectType.STRENGTH, 200, 0, false, false, false)
+            PotionEffect(PotionEffectType.STRENGTH, 200, 1, false, false, false)
         )
 
         val particleTask = Bukkit.getScheduler().runTaskTimer(plugin, Runnable {
@@ -261,6 +263,7 @@ class MobPowers(private val plugin: Mobcraft) {
         player.world.playSound(safeLoc, Sound.ENTITY_ENDERMAN_TELEPORT, 1f, 1f)
         player.world.spawnParticle(Particle.PORTAL, safeLoc, 30, 0.5, 1.0, 0.5, 0.2)
     }
+
     fun onEndermanProjectileDamage(event: EntityDamageByEntityEvent) {
         val target = event.entity as? Player ?: return
         val mob = plugin.playerMobMap[target.uniqueId]?.uppercase() ?: return
@@ -302,6 +305,92 @@ class MobPowers(private val plugin: Mobcraft) {
             1.3f
         )
     }
+    // ----------------------- ELDER GUARDIAN -----------------------
+    fun onElderGuardianInitialize(player: Player) {
+        plugin.mobsToPreventLoot.add("ELDER_GUARDIAN")
+
+        player.addPotionEffect(
+            PotionEffect(PotionEffectType.RESISTANCE, -1, 0)
+        )
+        player.addPotionEffect(
+            PotionEffect(PotionEffectType.WATER_BREATHING, -1, 0)
+        )
+    }
+    fun onElderGuardianRightClick(event: PlayerInteractEvent) {
+        val player = event.player
+
+        val playerMobMap: MutableMap<Player, String> = mutableMapOf()
+        if (!event.action.name.contains("RIGHT_CLICK")) return
+
+        val item = player.inventory.itemInMainHand.type
+
+        when (item) {
+            Material.PRISMARINE -> applyElderGuardianFatigue(player)
+            Material.SPONGE -> fireElderGuardianLaser(player)
+            else -> return
+        }
+
+        event.isCancelled = true
+    }
+    fun applyElderGuardianFatigue(player: Player) {
+        if (!player.location.block.isLiquid) {
+            player.sendMessage("§cYou must be underwater to use this ability.")
+            return
+        }
+
+        if (elderGuardianFatigueCooldown.contains(player)) {
+            player.sendMessage("§cMining Fatigue is recharging!")
+            return
+        }
+
+        elderGuardianFatigueCooldown.add(player)
+
+        player.world.getNearbyPlayers(player.location, 30.0).forEach { target ->
+            if (target == player) return@forEach
+
+            target.addPotionEffect(
+                PotionEffect(PotionEffectType.MINING_FATIGUE, 20 * 8, 2)
+            )
+        }
+
+        player.world.playSound(
+            player.location,
+            Sound.ENTITY_ELDER_GUARDIAN_CURSE,
+            1.5f,
+            1f
+        )
+
+        Bukkit.getScheduler().runTaskLater(plugin, Runnable {
+            elderGuardianFatigueCooldown.remove(player)
+            player.sendMessage("§aMining Fatigue ready!")
+        }, 20L * 30)
+    }
+
+    fun fireElderGuardianLaser(player: Player) {
+        val target = player.getTargetEntity(25) as? Player ?: return
+
+        val guardian = player.world.spawn(player.location, Guardian::class.java)
+        guardian.isInvisible = true
+        guardian.isSilent = true
+        guardian.isInvulnerable = true
+        guardian.setAI(false)
+        guardian.target = target
+
+        Bukkit.getScheduler().runTaskLater(plugin, Runnable {
+            guardian.remove()
+
+            if (!target.isOnline || target.isDead) return@Runnable
+
+            target.damage(10.0, player)
+
+            target.world.playSound(
+                target.location,
+                Sound.ENTITY_ELDER_GUARDIAN_HURT,
+                1.3f,
+                0.8f
+            )
+        }, 40L)
+    }
     // ----------------------- ENDER DRAGON -------------------------
     fun onEnderDragonInitialize(player: Player) {
         plugin.mobsToPreventLoot.add("ENDER_DRAGON")
@@ -339,9 +428,11 @@ class MobPowers(private val plugin: Mobcraft) {
             PotionEffectType.MINING_FATIGUE,
             PotionEffectType.INSTANT_DAMAGE,
             PotionEffectType.WEAKNESS -> event.isCancelled = true
+
             else -> {}
         }
     }
+
     fun onDragonEggDrop(event: PlayerDropItemEvent) {
         val item = event.itemDrop.itemStack
         val meta = item.itemMeta ?: return
@@ -418,6 +509,7 @@ class MobPowers(private val plugin: Mobcraft) {
             )
         }
     }
+
     fun onEnderDragonExplosion(event: ExplosionPrimeEvent) {
         val fireball = event.entity as? Fireball ?: return
         val shooter = fireball.shooter as? Player ?: return
@@ -457,6 +549,7 @@ class MobPowers(private val plugin: Mobcraft) {
 
         fireball.remove()
     }
+
     fun updateEnderDragonBeams() {
         Bukkit.getOnlinePlayers().forEach { player ->
             val mob = plugin.playerMobMap[player.uniqueId]?.uppercase() ?: return@forEach
@@ -497,7 +590,7 @@ class MobPowers(private val plugin: Mobcraft) {
         if (block.type != Material.END_PORTAL_FRAME && block.type != Material.END_PORTAL) return
         val player = event.player
         block.breakNaturally(player.inventory.itemInMainHand)
-        player.playSound(player.location,Sound.BLOCK_GLASS_BREAK, 1.5f, 1.0f)
+        player.playSound(player.location, Sound.BLOCK_GLASS_BREAK, 1.5f, 1.0f)
     }
 
     // ----------------------- TUFF GOLEM ---------------------------
@@ -507,7 +600,7 @@ class MobPowers(private val plugin: Mobcraft) {
             PotionEffect(
                 PotionEffectType.RESISTANCE,
                 -1,
-                3, // Resistance IV
+                0,
                 false,
                 false,
                 false
@@ -535,7 +628,7 @@ class MobPowers(private val plugin: Mobcraft) {
             PotionEffect(
                 PotionEffectType.RESISTANCE,
                 -1,
-                3,
+                0,
                 false,
                 false,
                 false
@@ -560,7 +653,8 @@ class MobPowers(private val plugin: Mobcraft) {
         player.flySpeed = 0.09F
         applyGhastEffects(player)
         player.addPotionEffect(
-            PotionEffect(PotionEffectType.FIRE_RESISTANCE, -1, 0, false, false, false))
+            PotionEffect(PotionEffectType.FIRE_RESISTANCE, -1, 0, false, false, false)
+        )
     }
 
     fun applyGhastEffects(player: Player) {
@@ -658,7 +752,6 @@ class MobPowers(private val plugin: Mobcraft) {
 
         }, 0L, 10L)
     }
-
     fun applyAxolotlEffects(player: Player) {
         if (!player.hasPotionEffect(PotionEffectType.REGENERATION)) {
             player.addPotionEffect(
@@ -684,93 +777,53 @@ class MobPowers(private val plugin: Mobcraft) {
                 }, 1L)
             }
         }
+            // ----------------------- SKELETON -----------------------
+    fun onSkeletonInitialize(player: Player) {
+                plugin.mobsToPreventLoot.add("SKELETON")
 
-        // ----------------------- ELDER GUARDIAN -----------------------
-        fun onElderGuardianInitialize(player: Player) {
-            plugin.mobsToPreventLoot.add("ELDER_GUARDIAN")
-            player.addPotionEffect(PotionEffect(PotionEffectType.RESISTANCE, -1, 0))
-            player.addPotionEffect(PotionEffect(PotionEffectType.WATER_BREATHING, -1, 0))
-
-            object : BukkitRunnable() {
-                override fun run() {
-                    if (!player.isOnline) {
-                        cancel()
-                        return
-                    }
-                    if (player.location.block.type == Material.WATER || player.isSwimming) {
-                        for (p in player.world.players) {
-                            if (p != player && p.location.distance(player.location) <= 10) {
-                                p.addPotionEffect(PotionEffect(PotionEffectType.MINING_FATIGUE, 60, 0))
-                            }
-                        }
-                    }
-                }
-            }.runTaskTimer(plugin, 0L, 600L)
-        }
-
-        fun onElderGuardianLaser(event: PlayerInteractEvent) {
-            val player = event.player
-            if (!event.action.name.contains("RIGHT_CLICK")) return
-            if (player.inventory.itemInMainHand.type != Material.PRISMARINE_SHARD) return
-
-            val fireball = player.world.spawn(
-                player.eyeLocation.add(player.location.direction.multiply(1.0)),
-                SmallFireball::class.java
-            )
-            fireball.direction = player.location.direction.multiply(1.5)
-            fireball.yield = 1.5f
-            fireball.shooter = player
-            player.world.playSound(player.location, Sound.ENTITY_GUARDIAN_ATTACK, 1f, 1f)
-            player.world.spawnParticle(Particle.END_ROD, player.location.add(0.0, 1.5, 0.0), 25, 0.2, 0.2, 0.2, 0.01)
-        }
-
-        // ----------------------- SKELETON -----------------------
-        fun onSkeletonInitialize(player: Player) {
-            plugin.mobsToPreventLoot.add("SKELETON")
-
-            player.addPotionEffect(
-                PotionEffect(
-                    PotionEffectType.POISON,
-                    1,
-                    0,
-                    false,
-                    false
-                )
-            ) // just to clear if present
-            player.removePotionEffect(PotionEffectType.POISON)
-        }
-
-        fun onSkeletonTick(player: Player) {
-            if (player.hasPotionEffect(PotionEffectType.POISON)) {
+                player.addPotionEffect(
+                    PotionEffect(
+                        PotionEffectType.POISON,
+                        1,
+                        0,
+                        false,
+                        false
+                    )
+                ) // just to clear if present
                 player.removePotionEffect(PotionEffectType.POISON)
             }
-        }
 
-        // ----------------------- HOMING ARROWS -----------------------
-        fun onSkeletonShoot(event: EntityShootBowEvent) {
-            val player = event.entity
-            if (player !is Player) return
-            if (plugin.playerMobMap[player.uniqueId]?.equals("SKELETON", ignoreCase = true) != true) return
-
-            val arrow = event.projectile
-            if (arrow !is Arrow) return
-
-            object : BukkitRunnable() {
-                override fun run() {
-                    if (arrow.isDead || arrow.isOnGround) {
-                        cancel()
-                        return
-                    }
-                    val nearby = arrow.world.getNearbyEntities(arrow.location, 16.0, 16.0, 16.0)
-                        .filterIsInstance<LivingEntity>()
-                        .filter { it != player }
-
-                    val target = nearby.minByOrNull { it.location.distanceSquared(arrow.location) } ?: return
-                    val direction = target.eyeLocation.toVector().subtract(arrow.location.toVector()).normalize()
-                    arrow.velocity =
-                        arrow.velocity.add(direction.multiply(0.2)).normalize().multiply(arrow.velocity.length())
+    fun onSkeletonTick(player: Player) {
+                if (player.hasPotionEffect(PotionEffectType.POISON)) {
+                    player.removePotionEffect(PotionEffectType.POISON)
                 }
-            }.runTaskTimer(plugin, 1L, 1L)
+            }
+
+            // ----------------------- HOMING ARROWS -----------------------
+    fun onSkeletonShoot(event: EntityShootBowEvent) {
+                val player = event.entity
+                if (player !is Player) return
+                if (plugin.playerMobMap[player.uniqueId]?.equals("SKELETON", ignoreCase = true) != true) return
+
+                val arrow = event.projectile
+                if (arrow !is Arrow) return
+
+                object : BukkitRunnable() {
+                    override fun run() {
+                        if (arrow.isDead || arrow.isOnGround) {
+                            cancel()
+                            return
+                        }
+                        val nearby = arrow.world.getNearbyEntities(arrow.location, 16.0, 16.0, 16.0)
+                            .filterIsInstance<LivingEntity>()
+                            .filter { it != player }
+
+                        val target = nearby.minByOrNull { it.location.distanceSquared(arrow.location) } ?: return
+                        val direction = target.eyeLocation.toVector().subtract(arrow.location.toVector()).normalize()
+                        arrow.velocity =
+                            arrow.velocity.add(direction.multiply(0.2)).normalize().multiply(arrow.velocity.length())
+                    }
+                }.runTaskTimer(plugin, 1L, 1L)
+            }
         }
     }
-}

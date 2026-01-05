@@ -131,7 +131,6 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
         }
         saveConfig()
     }
-
     fun initializeMob(player: Player, mob: String) {
 
         mobPowers.resetPlayerState(player)
@@ -142,6 +141,7 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
             "GHAST" -> mobPowers.onGhastInitialize(player)
             "TUFFGOLEM" -> mobPowers.onTuffGolemInitialize(player)
             "AXOLOTL" -> mobPowers.onAxolotlInitialize(player)
+            "ELDER_GUARDIAN" -> mobPowers.onElderGuardianInitialize(player)
         }
     }
 
@@ -357,10 +357,10 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
             }
 
             "ENDER_DRAGON" -> player.world.dropItemNaturally(location, ItemStack(Material.DRAGON_BREATH, 64))
-            "BLAZE" -> repeat(2) {
+            "BLAZE" -> {
                 player.world.dropItemNaturally(location, ItemStack(Material.BLAZE_ROD, 64))
+                player.world.dropItemNaturally(location, ItemStack(Material.BLAZE_ROD, 32))
             }
-
             "GHAST" -> {
                 repeat(2) {
                     player.world.dropItemNaturally(location, ItemStack(Material.GHAST_TEAR, 64))
@@ -388,6 +388,8 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
             "ENDER_DRAGON" -> {mobPowers.onEnderDragonRightClick(event); mobPowers.onEnderDragonBreak(event)}
 
             "ENDERMAN" -> mobPowers.onEndermanRightClick(event)
+
+            "ELDER_GUARDIAN" -> mobPowers.onElderGuardianRightClick(event)
             }
         }
     @EventHandler
