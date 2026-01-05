@@ -309,10 +309,6 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
         }
     }
     @EventHandler
-    fun onEntityExplode(event: ExplosionPrimeEvent) {
-        mobPowers.onEnderDragonExplosion(event)
-    }
-    @EventHandler
     fun onPlayerDeath(event: PlayerDeathEvent) {
         val player = event.entity
         val location = player.location
@@ -390,14 +386,6 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
             "ENDERMAN" -> mobPowers.onEndermanRightClick(event)
 
             "ELDER_GUARDIAN" -> mobPowers.onElderGuardianRightClick(event)
-            }
-        }
-    @EventHandler
-    fun onProjectileHit(event: ProjectileHitEvent) {
-        val projectile = event.entity
-
-        if (projectile is DragonFireball) {
-            mobPowers.onDragonFireballHit(event)
         }
     }
     @EventHandler

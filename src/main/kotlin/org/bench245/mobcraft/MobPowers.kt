@@ -508,47 +508,6 @@ class MobPowers(private val plugin: Mobcraft) {
             )
         }
     }
-
-    fun onEnderDragonExplosion(event: ExplosionPrimeEvent) {
-        val fireball = event.entity as? Fireball ?: return
-        val shooter = fireball.shooter as? Player ?: return
-        val mob = plugin.playerMobMap[shooter.uniqueId]?.uppercase() ?: return
-        if (mob != "ENDER_DRAGON") return
-
-        event.radius = 6f // ≈ 10 TNT instead of 20
-
-        val loc = fireball.location
-        val world = loc.world ?: return
-
-        Bukkit.getScheduler().runTask(plugin, Runnable {
-            world.spawnParticle(Particle.EXPLOSION_EMITTER, loc, 1)
-            world.spawnParticle(Particle.FLAME, loc, 200, 1.5, 1.5, 1.5, 0.05)
-            world.spawnParticle(Particle.DRAGON_BREATH, loc, 150, 1.5, 1.5, 1.5, 0.02)
-        })
-    }
-
-
-    fun onDragonFireballHit(event: ProjectileHitEvent) {
-        val fireball = event.entity as? DragonFireball ?: return
-
-        val key = NamespacedKey(plugin, "dragon_fireball")
-        if (!fireball.persistentDataContainer.has(key, PersistentDataType.BYTE)) return
-
-        val loc = fireball.location
-        val world = loc.world ?: return
-        world.createExplosion(
-            loc.x,
-            loc.y,
-            loc.z,
-            10f,
-            true,
-            true
-        )
-
-
-        fireball.remove()
-    }
-
     fun updateEnderDragonBeams() {
         Bukkit.getOnlinePlayers().forEach { player ->
             val mob = plugin.playerMobMap[player.uniqueId]?.uppercase() ?: return@forEach
