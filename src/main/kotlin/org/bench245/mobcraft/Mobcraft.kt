@@ -386,6 +386,8 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
             "ENDERMAN" -> mobPowers.onEndermanRightClick(event)
 
             "ELDER_GUARDIAN" -> mobPowers.onElderGuardianRightClick(event)
+
+            "TUFFGOLEM" -> mobPowers.onTuffGolemLeftClick(event)
         }
     }
     @EventHandler

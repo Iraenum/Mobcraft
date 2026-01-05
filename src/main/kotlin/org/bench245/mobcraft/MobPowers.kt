@@ -23,6 +23,8 @@ class MobPowers(private val plugin: Mobcraft) {
 
     private val elderGuardianFatigueCooldown = mutableSetOf<Player>()
 
+    private val tuffGolemCooldown = mutableSetOf<UUID>()
+
     fun resetPlayerState(player: Player) {
 
         player.activePotionEffects.forEach {
@@ -579,6 +581,55 @@ class MobPowers(private val plugin: Mobcraft) {
                 player.spigot().respawn()
             }, 1L)
         }
+    }
+
+    private fun activateTuffShield(player: Player) {
+        tuffGolemCooldown.add(player.uniqueId)
+
+        // 1 second invulnerability
+        player.isInvulnerable = true
+        player.world.playSound(
+            player.location,
+            Sound.BLOCK_TUFF_PLACE,
+            1.2f,
+            0.8f
+        )
+
+        player.world.spawnParticle(
+            Particle.BLOCK,
+            player.location.add(0.0, 1.0, 0.0),
+            40,
+            0.4, 0.6, 0.4,
+            Material.TUFF.createBlockData()
+        )
+
+        Bukkit.getScheduler().runTaskLater(plugin, Runnable {
+            player.isInvulnerable = false
+        }, 20L)
+
+        Bukkit.getScheduler().runTaskLater(plugin, Runnable {
+            tuffGolemCooldown.remove(player.uniqueId)
+            player.sendMessage("§aTuff Shield ready!")
+        }, 20L * 30)
+    }
+
+    fun onTuffGolemLeftClick(event: PlayerInteractEvent) {
+        val player = event.player
+        val mob = plugin.playerMobMap[player.uniqueId]?.uppercase() ?: return
+        if (mob != "TUFFGOLEM") return
+
+        if (!event.action.name.contains("LEFT_CLICK")) return
+
+        val clicked = event.clickedBlock ?: return
+        if (clicked.type != Material.TUFF) return
+
+        if (tuffGolemCooldown.contains(player.uniqueId)) {
+            player.sendMessage("§cTuff Shield is recharging!")
+            return
+        }
+
+        activateTuffShield(player)
+        event.isCancelled = true
     }
 
     fun applyGolemEffects(player: Player) {
