@@ -623,8 +623,7 @@ class MobPowers(private val plugin: Mobcraft) {
 
         if (!event.action.name.contains("LEFT_CLICK")) return
 
-        val clicked = event.clickedBlock ?: return
-        if (clicked.type != Material.TUFF) return
+        if (player.inventory.itemInMainHand.type != Material.TUFF) return
 
         if (tuffGolemCooldown.contains(player.uniqueId)) {
             player.sendMessage("§cTuff Shield is recharging!")
