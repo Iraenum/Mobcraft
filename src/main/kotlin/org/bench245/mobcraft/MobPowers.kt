@@ -258,7 +258,7 @@ class MobPowers(private val plugin: Mobcraft) {
 
         safeLoc.yaw = player.location.yaw
         safeLoc.pitch = player.location.pitch
-
+        player.fallDistance = 0f
         player.teleport(safeLoc)
         player.world.playSound(safeLoc, Sound.ENTITY_ENDERMAN_TELEPORT, 1f, 1f)
         player.world.spawnParticle(Particle.PORTAL, safeLoc, 30, 0.5, 1.0, 0.5, 0.2)
@@ -319,7 +319,6 @@ class MobPowers(private val plugin: Mobcraft) {
     fun onElderGuardianRightClick(event: PlayerInteractEvent) {
         val player = event.player
 
-        val playerMobMap: MutableMap<Player, String> = mutableMapOf()
         if (!event.action.name.contains("RIGHT_CLICK")) return
 
         val item = player.inventory.itemInMainHand.type
