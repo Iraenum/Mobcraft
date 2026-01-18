@@ -6,8 +6,6 @@ import org.bench245.mobcraft.command.MobCraft.MobPowers.MobPowers
 import org.bench245.mobcraft.commands.GiveItemCompleter
 import org.bench245.mobcraft.data.PunishmentManager
 import org.bench245.mobcraft.data.TimerTask
-import org.bench245.mobcraft.listener.DeathListener
-import org.bench245.mobcraft.listener.RespawnListener
 import org.bukkit.*
 import org.bukkit.attribute.Attribute
 import org.bukkit.command.CommandExecutor
@@ -36,8 +34,7 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
     private val giveItem = GiveItem(this)
     private val mountCommand = MountCommand(this)
     private val dragonEggKey = NamespacedKey(this, "bound_dragon_egg")
-    lateinit var punishmentManager: PunishmentManager
-        private set
+    private val punishmentManager = PunishmentManager(this)
     private lateinit var enChest: EnChestCommand
 
     lateinit var mobPowers: MobPowers
@@ -48,14 +45,11 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
             mobPowers.updateEnderDragonBeams()
         }, 1L, 1L)
 
-        punishmentManager = PunishmentManager(this)
         enChest = EnChestCommand(this)
         mobPowers = MobPowers(this)
 
         // Register listeners
         server.pluginManager.registerEvents(this, this)
-        server.pluginManager.registerEvents(DeathListener(this, punishmentManager), this)
-        server.pluginManager.registerEvents(RespawnListener(punishmentManager), this)
 
         getCommand("loottoggle")?.apply {
             setExecutor(lootToggleCommand)
@@ -181,10 +175,6 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
             }
     }
 
-    fun getPlayerMob(player: Player): String {
-        return playerMobMap.getOrDefault(player.uniqueId, "none")
-    }
-
     fun enableFlight(player: Player?) {
         if (player == null) return
         player.allowFlight = true
@@ -207,12 +197,12 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
     @EventHandler
     fun onPlayerRespawn(event: PlayerRespawnEvent) {
         val player = event.player
-        val mob = playerMobMap[player.uniqueId]?.uppercase() ?: return
+        val mob = playerMobMap[player.uniqueId]?.uppercase() ?: "NONE"
 
         Bukkit.getScheduler().runTaskLater(this, Runnable {
 
             // 🔓 Override punishment for specific mobs
-            if (mob == "TUFFGOLEM" || mob == "AXOLOTL") {
+            if (mob == "TUFFGOLEM" || mob == "AXOLOTL" || mob == "NONE") {
                 punishmentManager.unpunish(player)
                 resetPlayerState(player)
             }
@@ -313,7 +303,7 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
         val player = event.entity
         val location = player.location
         val damageSource = player.lastDamageCause
-
+        punishmentManager.onPlayerDeath(event)
         mobPowers.onDragonEggDeath(event)
 
         val contextBuilder = Builder(location).lootedEntity(player)
@@ -336,7 +326,7 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
             }
         }
 
-        val mob = playerMobMap[player.uniqueId]?.uppercase() ?: return
+        val mob = playerMobMap[player.uniqueId]?.uppercase() ?: "NONE"
         when (mob) {
             "TUFFGOLEM" -> {
                 mobPowers.onTuffGolemDeath(event)
@@ -363,6 +353,10 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
             "GUARDIAN", "ELDER_GUARDIAN" -> {
                 player.world.dropItemNaturally(location, ItemStack(Material.SPONGE, 64))
                 player.world.dropItemNaturally(location, ItemStack(Material.PRISMARINE, 64))
+            }
+            "NONE" -> {
+                val orb = player.world.spawnEntity(location, EntityType.EXPERIENCE_ORB) as ExperienceOrb
+                orb.experience = 1395
             }
         }
     }

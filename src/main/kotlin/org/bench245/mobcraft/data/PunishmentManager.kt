@@ -4,7 +4,6 @@ import org.bench245.mobcraft.Mobcraft
 import org.bukkit.Bukkit
 import org.bukkit.GameMode
 import org.bukkit.entity.Player
-import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.entity.EntityDamageByEntityEvent
 import org.bukkit.event.entity.PlayerDeathEvent
@@ -59,25 +58,15 @@ class PunishmentManager(val plugin: Mobcraft) : Listener {
             .filter { punished.getLong(it, 0L) > System.currentTimeMillis() }
     }
 
-    @EventHandler
     fun onPlayerDeath(event: PlayerDeathEvent) {
         val player = event.entity
-        val lastDamage = player.lastDamageCause
+        val damage = player.lastDamageCause ?: return
+        val mob = plugin.playerMobMap[player.uniqueId]?.uppercase() ?: "NONE"
+        if (damage !is EntityDamageByEntityEvent) return
+        if (damage.damager !is Player) return
 
-        if (lastDamage !is EntityDamageByEntityEvent) return
-        if (lastDamage.damager !is Player) return
-
-        val mob = plugin.getPlayerMob(player)?.uppercase() ?: "NONE"
-
-        // 🚫 These mobs bypass punishment
-        if (mob == "TUFFGOLEM" || mob == "AXOLOTL") {
-            Bukkit.getScheduler().runTaskLater(plugin, Runnable {
-                unpunish(player)
-                plugin.resetPlayerState(player)
-            }, 1L)
-            return
+        if (mob != "TUFFGOLEM" || mob != "AXOLOTL" || mob != "NONE") {
+            punish(player)
         }
-
-        punish(player)
     }
 }
