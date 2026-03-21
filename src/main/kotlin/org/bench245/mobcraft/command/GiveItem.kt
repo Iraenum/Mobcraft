@@ -38,9 +38,9 @@ class GiveItem(private val plugin: Mobcraft) : CommandExecutor {
             amount = args[1].toIntOrNull()?: 1
         }
 
-        when {
+        when (mobType) {
             // GHAST-specific items
-            mobType == "GHAST" -> {
+            "GHAST" -> {
                 val type = args[0].lowercase()
                 when (type) {
                     "ghast_tear" -> giveItem(player, Material.GHAST_TEAR, amount)
@@ -49,7 +49,7 @@ class GiveItem(private val plugin: Mobcraft) : CommandExecutor {
                 }
                 return true
             }
-            mobType == "BLAZE" -> {
+            "BLAZE" -> {
                 val type = args[0].lowercase()
                 when (type) {
                     "blaze_rod" -> giveItem(player, Material.BLAZE_ROD, amount)
@@ -57,7 +57,7 @@ class GiveItem(private val plugin: Mobcraft) : CommandExecutor {
                 }
                 return true
             }
-            mobType == "ENDERMAN" -> {
+            "ENDERMAN" -> {
                 val type = args[0].lowercase()
                 when (type) {
                     "ender_pearl" -> giveItem(player, Material.ENDER_PEARL, amount)
@@ -65,7 +65,7 @@ class GiveItem(private val plugin: Mobcraft) : CommandExecutor {
                 }
                 return true
             }
-            mobType == "TUFFGOLEM" -> {
+            "TUFFGOLEM" -> {
                 val type = args[0].lowercase()
                 when (type) {
                     "tuff" -> giveItem(player, Material.TUFF, amount)
@@ -73,15 +73,23 @@ class GiveItem(private val plugin: Mobcraft) : CommandExecutor {
                 }
                 return true
             }
-            mobType == "ENDER_DRAGON" -> {
+            "ENDER_DRAGON" -> {
                 val type = args[0].lowercase()
                 when (type) {
                     "dragon_egg" -> giveItem(player, Material.DRAGON_EGG, amount)
                     "dragon_breath" -> giveItem(player, Material.DRAGON_BREATH, amount)
                     "end_portal_frame" -> giveItem(player, Material.END_PORTAL_FRAME, amount)
-                    else -> player.sendMessage("§cInvalid type. Use 'ender_pearl'.")
+                    else -> player.sendMessage("§cInvalid type. Use 'dragon_egg', 'dragon_breath', or 'end_portal_frame'.")
                 }
                 return true
+            }
+            "ELDER_GUARDIAN" -> {
+                val type = args[0].lowercase()
+                when (type) {
+                    "sponge" -> giveItem(player, Material.SPONGE, amount)
+                    "prismarine" -> giveItem(player, Material.PRISMARINE, amount)
+                    else -> player.sendMessage("§cInvalid type. Use 'sponge' or 'prismarine'.")
+                }
             }
         }
         return true

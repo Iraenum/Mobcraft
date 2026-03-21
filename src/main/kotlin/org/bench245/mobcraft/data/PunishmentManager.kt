@@ -14,10 +14,8 @@ class PunishmentManager(val plugin: Mobcraft) : Listener {
         plugin.config.getConfigurationSection("punishedPlayers")
             ?: plugin.config.createSection("punishedPlayers")
 
-    // ---------------- ORIGINAL METHODS (UNCHANGED) ----------------
-
     fun punish(player: Player) {
-        val endTime = System.currentTimeMillis() + 24 * 60 * 60 * 1000
+        val endTime = System.currentTimeMillis() + (24 * 60 * 60 * 1000)
 
         punished.set(player.name, endTime)
         plugin.saveConfig()
@@ -31,12 +29,7 @@ class PunishmentManager(val plugin: Mobcraft) : Listener {
         plugin.saveConfig()
 
         player.gameMode = GameMode.SURVIVAL
-        player.health = player.maxHealth
         player.sendMessage("§aYou have been revived.")
-    }
-
-    fun isPunished(player: Player): Boolean {
-        return punished.getLong(player.name, 0L) > System.currentTimeMillis()
     }
 
     fun checkTimers() {
@@ -45,13 +38,9 @@ class PunishmentManager(val plugin: Mobcraft) : Listener {
             if (end <= System.currentTimeMillis()) {
                 val p = Bukkit.getPlayer(name)
                 if (p != null) unpunish(p)
-                else punished.set(name, null)
             }
         }
-        plugin.saveConfig()
     }
-
-    // -------------------- ADDITIONS --------------------
 
     fun getAllPunishedPlayers(): List<String> {
         return punished.getKeys(false)
@@ -63,10 +52,8 @@ class PunishmentManager(val plugin: Mobcraft) : Listener {
         val damage = player.lastDamageCause ?: return
         val mob = plugin.playerMobMap[player.uniqueId]?.uppercase() ?: "NONE"
         if (damage !is EntityDamageByEntityEvent) return
-        if (damage.damager !is Player) return
-
-        if (mob != "TUFFGOLEM" || mob != "AXOLOTL" || mob != "NONE") {
-            punish(player)
-        }
+        if (damage.damageSource.causingEntity !is Player || damage.damageSource.causingEntity == player) return
+        if (mob == "TUFFGOLEM" || mob == "AXOLOTL" || mob == "NONE") return
+        punish(player)
     }
 }

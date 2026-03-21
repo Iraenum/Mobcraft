@@ -5,7 +5,10 @@ import org.bukkit.*
 import org.bukkit.attribute.Attribute
 import org.bukkit.entity.*
 import org.bukkit.event.entity.*
-import org.bukkit.event.player.*
+import org.bukkit.event.player.PlayerDropItemEvent
+import org.bukkit.event.player.PlayerInteractEvent
+import org.bukkit.event.player.PlayerMoveEvent
+import org.bukkit.event.player.PlayerRespawnEvent
 import org.bukkit.persistence.PersistentDataType
 import org.bukkit.potion.PotionEffect
 import org.bukkit.potion.PotionEffectType
@@ -15,6 +18,8 @@ import java.util.*
 import kotlin.random.Random
 
 class MobPowers(private val plugin: Mobcraft) {
+
+    val cursed = plugin.cursed
 
     private val dragonAbilityCooldown = mutableSetOf<Player>()
 
@@ -27,10 +32,6 @@ class MobPowers(private val plugin: Mobcraft) {
     private val tuffGolemCooldown = mutableSetOf<UUID>()
 
     fun resetPlayerState(player: Player) {
-
-        player.activePotionEffects.forEach {
-            player.removePotionEffect(it.type)
-        }
 
         player.walkSpeed = 0.2f
         player.flySpeed = 0.1f
@@ -50,6 +51,11 @@ class MobPowers(private val plugin: Mobcraft) {
         }
     }
 
+    fun disableFlight(player: Player) {
+        player.allowFlight = false
+        player.isFlying = false
+    }
+
     // ----------------------- BLAZE -------------------------------
 
     private val blazeCombatActive = mutableSetOf<UUID>()
@@ -59,35 +65,38 @@ class MobPowers(private val plugin: Mobcraft) {
         plugin.mobsToPreventLoot.add("BLAZE")
         plugin.enableFlight(player)
         player.flySpeed = 0.03F
-
-        player.addPotionEffect(
-            PotionEffect(PotionEffectType.FIRE_RESISTANCE, -1, 0, false, false, false)
-        )
+        applyBlazeEffects(player)
     }
 
-    fun onBlazeRightClick(event: PlayerInteractEvent) {
-        onBlazeRodUse(event)
+    fun blazeCurse(player: Player) {
+        cursed.add(player.name)
+        disableFlight(player)
+        blazeCombatActive.remove(player.uniqueId)
+        player.removePotionEffect(PotionEffectType.FIRE_RESISTANCE)
+        player.removePotionEffect(PotionEffectType.STRENGTH)
+    }
+
+    fun blazeUncurse(player: Player) {
+        cursed.remove(player.name)
+        applyBlazeEffects(player)
+    }
+
+    fun applyBlazeEffects(player: Player) {
+        player.addPotionEffect(PotionEffect(PotionEffectType.FIRE_RESISTANCE, -1, 0, false, false, false))
+        plugin.enableFlight(player)
+        player.flySpeed = 0.03F
     }
 
     fun onBlazeMove(event: PlayerMoveEvent) {
         val player = event.player
-        val mob = plugin.playerMobMap[player.uniqueId]?.uppercase() ?: return
-        if (mob != "BLAZE") return
-
-        // Re-apply fire resistance safely
-        if (!player.hasPotionEffect(PotionEffectType.FIRE_RESISTANCE)) {
-            player.addPotionEffect(
-                PotionEffect(PotionEffectType.FIRE_RESISTANCE, -1, 0, false, false, false)
-            )
-        }
+        if (cursed.contains(player.name)) return
+        player.addPotionEffect(PotionEffect(PotionEffectType.FIRE_RESISTANCE, -1, 0, false, false, false))
     }
 
     fun onBlazeRodUse(event: PlayerInteractEvent) {
         val player = event.player
+        if (cursed.contains(player.name)) return
         if (player.inventory.itemInMainHand.type != Material.BLAZE_ROD) return
-
-        val mob = plugin.playerMobMap[player.uniqueId]?.uppercase() ?: return
-        if (mob != "BLAZE") return
 
         // LEFT CLICK → Enter combat phase
         if (event.action.name.contains("LEFT_CLICK")) {
@@ -117,20 +126,6 @@ class MobPowers(private val plugin: Mobcraft) {
                 Sound.ENTITY_BLAZE_SHOOT,
                 1f,
                 1f
-            )
-        }
-    }
-
-    fun applyBlazeEffects(player: Player) {
-        if (!player.hasPotionEffect(PotionEffectType.FIRE_RESISTANCE)) {
-            player.addPotionEffect(
-                PotionEffect(PotionEffectType.STRENGTH, 200, 1, false, false, false)
-            )
-        }
-
-        if (!player.hasPotionEffect(PotionEffectType.STRENGTH)) {
-            player.addPotionEffect(
-                PotionEffect(PotionEffectType.STRENGTH, 200, 1, false, false, false)
             )
         }
     }
@@ -189,9 +184,6 @@ class MobPowers(private val plugin: Mobcraft) {
     fun onBlazeProjectileHit(event: EntityDamageByEntityEvent) {
         val player = event.entity as? Player ?: return
         val damager = event.damager
-
-        val mob = plugin.playerMobMap[player.uniqueId]?.uppercase() ?: return
-        if (mob != "BLAZE") return
         if (!blazeCombatActive.contains(player.uniqueId)) return
 
         if (damager is Projectile) {
@@ -206,28 +198,23 @@ class MobPowers(private val plugin: Mobcraft) {
             )
         }
     }
-
-    fun onBlazeGamemodeChange(event: PlayerGameModeChangeEvent) {
-        if (event.newGameMode == GameMode.SPECTATOR) {
-            resetBlaze(event.player)
-        }
-    }
-
-    private fun resetBlaze(player: Player) {
-        blazeCombatActive.remove(player.uniqueId)
-        blazeCooldown.remove(player.uniqueId)
-    }
     // ----------------------- ENDERMAN -------------------------------
-
-    fun canPierceEndermanShield(shooter: Any?): Boolean {
-        return shooter is Blaze || shooter is EnderDragon
-    }
 
     private val reflectedKey = NamespacedKey(plugin, "enderman_reflected")
     private val enderPearlCooldowns = mutableMapOf<Player, Long>()
 
     fun onEndermanInitialize(player: Player) {
         plugin.mobsToPreventLoot.add("ENDERMAN")
+        applyEndermanSpeed(player)
+    }
+
+    fun endermanCurse(player: Player) {
+        cursed.add(player.name)
+        player.getAttribute(Attribute.MOVEMENT_SPEED)?.baseValue = 0.1
+    }
+
+    fun endermanUncurse(player: Player) {
+        cursed.remove(player.name)
         applyEndermanSpeed(player)
     }
 
@@ -239,7 +226,7 @@ class MobPowers(private val plugin: Mobcraft) {
 
     fun onEndermanRightClick(event: PlayerInteractEvent) {
         val player = event.player
-        if (plugin.playerMobMap[player.uniqueId]?.equals("ENDERMAN", true) != true) return
+        if (cursed.contains(player.name)) return
         if (!event.action.name.contains("RIGHT_CLICK")) return
         if (player.inventory.itemInMainHand.type != Material.ENDER_PEARL) return
         event.isCancelled = true
@@ -270,9 +257,32 @@ class MobPowers(private val plugin: Mobcraft) {
     }
 
     fun onEndermanProjectileDamage(event: EntityDamageByEntityEvent) {
-        val target = event.entity as? Player ?: return
-        val mob = plugin.playerMobMap[target.uniqueId]?.uppercase() ?: return
-        if (mob != "ENDERMAN") return
+        val player = event.entity as? Player ?: return
+        if (cursed.contains(player.name)) return
+
+        if (event.damager is Enderman)
+            event.isCancelled = true
+
+        if (event.damager is Projectile) {
+            event.isCancelled = true
+            event.damager.remove()
+
+            player.world.spawnParticle(
+                Particle.CRIT,
+                player.location.add(0.0, 1.0, 0.0),
+                10,
+                0.2,
+                0.2,
+                0.2,
+                0.05
+            )
+            player.world.playSound(
+                player.location,
+                Sound.ENTITY_ITEM_BREAK,
+                1f,
+                1f
+            )
+        }
 
         val projectile = event.damager as? Projectile ?: return
         if (projectile !is Arrow) return
@@ -297,32 +307,43 @@ class MobPowers(private val plugin: Mobcraft) {
 
         projectile.velocity = projectile.velocity.multiply(-1)
 
-        target.world.spawnParticle(
+        player.world.spawnParticle(
             Particle.CRIT,
-            target.location.add(0.0, 1.0, 0.0),
+            player.location.add(0.0, 1.0, 0.0),
             15, 0.3, 0.3, 0.3, 0.05
         )
 
-        target.world.playSound(
-            target.location,
+        player.world.playSound(
+            player.location,
             Sound.ITEM_SHIELD_BLOCK,
             1f,
             1.3f
         )
     }
+
     // ----------------------- ELDER GUARDIAN -----------------------
     fun onElderGuardianInitialize(player: Player) {
         plugin.mobsToPreventLoot.add("ELDER_GUARDIAN")
 
-        player.addPotionEffect(
-            PotionEffect(PotionEffectType.RESISTANCE, -1, 0)
-        )
-        player.addPotionEffect(
-            PotionEffect(PotionEffectType.WATER_BREATHING, -1, 0)
-        )
+        player.addPotionEffect(PotionEffect(PotionEffectType.RESISTANCE, -1, 0, false, false, false))
+        player.addPotionEffect(PotionEffect(PotionEffectType.WATER_BREATHING, -1, 0, false, false, false))
     }
+
+    fun elderGuardianCurse(player: Player) {
+        cursed.add(player.name)
+        player.removePotionEffect(PotionEffectType.RESISTANCE)
+        player.removePotionEffect(PotionEffectType.WATER_BREATHING)
+    }
+
+    fun elderGuardianUncurse(player: Player) {
+        cursed.remove(player.name)
+        player.addPotionEffect(PotionEffect(PotionEffectType.RESISTANCE, -1, 0, false, false, false))
+        player.addPotionEffect(PotionEffect(PotionEffectType.WATER_BREATHING, -1, 0, false, false, false))
+    }
+
     fun onElderGuardianRightClick(event: PlayerInteractEvent) {
         val player = event.player
+        if (cursed.contains(player.name)) return
 
         if (!event.action.name.contains("RIGHT_CLICK")) return
 
@@ -336,6 +357,7 @@ class MobPowers(private val plugin: Mobcraft) {
 
         event.isCancelled = true
     }
+
     fun applyElderGuardianFatigue(player: Player) {
         if (!player.location.block.isLiquid) {
             player.sendMessage("§cYou must be underwater to use this ability.")
@@ -373,16 +395,8 @@ class MobPowers(private val plugin: Mobcraft) {
     fun fireElderGuardianLaser(player: Player) {
         val target = player.getTargetEntity(25) as? Player ?: return
 
-        val guardian = player.world.spawn(player.location, Guardian::class.java)
-        guardian.isInvisible = true
-        guardian.isSilent = true
-        guardian.isInvulnerable = true
-        guardian.setAI(false)
-        guardian.target = target
 
         Bukkit.getScheduler().runTaskLater(plugin, Runnable {
-            guardian.remove()
-
             if (!target.isOnline || target.isDead) return@Runnable
 
             target.damage(10.0, player)
@@ -395,6 +409,7 @@ class MobPowers(private val plugin: Mobcraft) {
             )
         }, 40L)
     }
+
     // ----------------------- ENDER DRAGON -------------------------
     fun onEnderDragonInitialize(player: Player) {
         plugin.mobsToPreventLoot.add("ENDER_DRAGON")
@@ -402,26 +417,43 @@ class MobPowers(private val plugin: Mobcraft) {
         player.flySpeed = 0.1F
 
         // Permanent buffs
-        player.addPotionEffect(PotionEffect(PotionEffectType.FIRE_RESISTANCE, -1, 0))
-        player.addPotionEffect(PotionEffect(PotionEffectType.WATER_BREATHING, -1, 0))
+        player.addPotionEffect(PotionEffect(PotionEffectType.FIRE_RESISTANCE, -1, 0, false, false, false))
+        player.addPotionEffect(PotionEffect(PotionEffectType.WATER_BREATHING, -1, 0, false, false, false))
+    }
+
+    fun enderDragonCurse(player: Player) {
+        cursed.add(player.name)
+        player.removePotionEffect(PotionEffectType.FIRE_RESISTANCE)
+        player.removePotionEffect(PotionEffectType.WATER_BREATHING)
+        disableFlight(player)
+    }
+
+    fun enderDragonUncurse(player: Player) {
+        cursed.remove(player.name)
+        applyDragonEffects(player)
+    }
+
+    fun onDragonDamage(event: EntityDamageByEntityEvent) {
+        if (cursed.contains(event.entity.name)) return
+        if (event.damager is EnderDragon)
+            event.isCancelled = true
+
+        if (event.damager is AreaEffectCloud) {
+            val cloud = event.damager as AreaEffectCloud
+            if (cloud.particle == Particle.DRAGON_BREATH) event.isCancelled = true
+        }
     }
 
     fun applyDragonEffects(player: Player) {
-        if (!player.hasPotionEffect(PotionEffectType.FIRE_RESISTANCE)) {
-            player.addPotionEffect(
-                PotionEffect(PotionEffectType.FIRE_RESISTANCE, -1, 0, false, false, false)
-            )
-        }
-
-        if (!player.hasPotionEffect(PotionEffectType.WATER_BREATHING)) {
-            player.addPotionEffect(
-                PotionEffect(PotionEffectType.WATER_BREATHING, -1, 0, false, false, false)
-            )
-        }
+        player.addPotionEffect(PotionEffect(PotionEffectType.FIRE_RESISTANCE, -1, 0, false, false, false))
+        player.addPotionEffect(PotionEffect(PotionEffectType.WATER_BREATHING, -1, 0, false, false, false))
+        plugin.enableFlight(player)
+        player.flySpeed = 0.1F
     }
 
     fun onEnderDragonPotionEffect(event: EntityPotionEffectEvent) {
         val player = event.entity as? Player ?: return
+        if (cursed.contains(player.name)) return
         if (plugin.playerMobMap[player.uniqueId]?.uppercase() != "ENDER_DRAGON") return
 
         when (event.modifiedType) {
@@ -431,7 +463,12 @@ class MobPowers(private val plugin: Mobcraft) {
             PotionEffectType.SLOWNESS,
             PotionEffectType.MINING_FATIGUE,
             PotionEffectType.INSTANT_DAMAGE,
-            PotionEffectType.WEAKNESS -> event.isCancelled = true
+            PotionEffectType.WEAKNESS -> {
+                when (event.action) {
+                    EntityPotionEffectEvent.Action.ADDED -> event.isCancelled
+                    else -> {}
+                }
+            }
 
             else -> {}
         }
@@ -477,9 +514,8 @@ class MobPowers(private val plugin: Mobcraft) {
 
     fun onEnderDragonRightClick(event: PlayerInteractEvent) {
         val player = event.player
+        if (cursed.contains(player.name)) return
         if (player.inventory.itemInMainHand.type != Material.DRAGON_BREATH) return
-        val mob = plugin.playerMobMap[player.uniqueId]?.uppercase() ?: return
-        if (mob != "ENDER_DRAGON") return
         if (!event.action.name.contains("RIGHT_CLICK")) return
 
         if (dragonAbilityCooldown.contains(player)) {
@@ -513,8 +549,10 @@ class MobPowers(private val plugin: Mobcraft) {
             )
         }
     }
+
     fun updateEnderDragonBeams() {
         Bukkit.getOnlinePlayers().forEach { player ->
+            if (cursed.contains(player.name)) return
             val mob = plugin.playerMobMap[player.uniqueId]?.uppercase() ?: return@forEach
             if (mob != "ENDER_DRAGON") return@forEach
 
@@ -538,16 +576,8 @@ class MobPowers(private val plugin: Mobcraft) {
         crystal.beamTarget = target
     }
 
-    fun onDragonFallDamage(event: EntityDamageEvent) {
-        if (event.entity !is Player) return
-        val player = event.entity as Player
-        val mob = plugin.playerMobMap[player.uniqueId]?.uppercase() ?: return
-        if (mob == "ENDER_DRAGON" && event.cause == EntityDamageEvent.DamageCause.FALL) {
-            event.isCancelled = true
-        }
-    }
-
     fun onEnderDragonBreak(event: PlayerInteractEvent) {
+        if (cursed.contains(event.player.name)) return
         if (!event.action.name.contains("LEFT_CLICK_BLOCK")) return
         val block = event.clickedBlock ?: return
         if (block.type != Material.END_PORTAL_FRAME && block.type != Material.END_PORTAL) return
@@ -559,36 +589,25 @@ class MobPowers(private val plugin: Mobcraft) {
     // ----------------------- TUFF GOLEM ---------------------------
 
     fun onTuffGolemInitialize(player: Player) {
-        player.addPotionEffect(
-            PotionEffect(
-                PotionEffectType.RESISTANCE,
-                -1,
-                0,
-                false,
-                false,
-                false
-            )
-        )
+        player.addPotionEffect(PotionEffect(PotionEffectType.RESISTANCE, -1, 0, false, false, false))
         player.getAttribute(Attribute.SCALE)?.baseValue = 0.5
     }
 
-    fun onTuffGolemHit(event: EntityDamageByEntityEvent) {
-        val player = event.entity as? Player ?: return
-        if (plugin.playerMobMap[player.uniqueId] != "TUFFGOLEM") return
+    fun tuffGolemCurse(player: Player) {
+        cursed.add(player.name)
+        player.removePotionEffect(PotionEffectType.RESISTANCE)
+        player.getAttribute(Attribute.SCALE)?.baseValue = 1.0
     }
 
-    fun onTuffGolemDeath(event: PlayerDeathEvent) {
-        val player = event.entity
-        if (plugin.playerMobMap[player.uniqueId] == "TUFFGOLEM") {
-            plugin.server.scheduler.runTaskLater(plugin, Runnable {
-                player.spigot().respawn()
-            }, 1L)
-        }
+    fun tuffGolemUncurse(player: Player) {
+        cursed.remove(player.name)
+        applyTuffGolemEffects(player)
+        player.getAttribute(Attribute.SCALE)?.baseValue = 0.5
+
     }
 
     private fun activateTuffShield(player: Player) {
         tuffGolemCooldown.add(player.uniqueId)
-
         // 1 second invulnerability
         player.isInvulnerable = true
         player.world.playSound(
@@ -618,6 +637,7 @@ class MobPowers(private val plugin: Mobcraft) {
 
     fun onTuffGolemLeftClick(event: PlayerInteractEvent) {
         val player = event.player
+        if (cursed.contains(player.name)) return
         val mob = plugin.playerMobMap[player.uniqueId]?.uppercase() ?: return
         if (mob != "TUFFGOLEM") return
 
@@ -634,20 +654,12 @@ class MobPowers(private val plugin: Mobcraft) {
         event.isCancelled = true
     }
 
-    fun applyGolemEffects(player: Player) {
-        player.addPotionEffect(
-            PotionEffect(
-                PotionEffectType.RESISTANCE,
-                -1,
-                0,
-                false,
-                false,
-                false
-            )
-        )
+    fun applyTuffGolemEffects(player: Player) {
+        player.addPotionEffect(PotionEffect(PotionEffectType.RESISTANCE, -1, 0, false, false, false))
     }
 
     fun openTuffGolemEnderChest(player: Player) {
+        if (cursed.contains(player.name)) return
         if (plugin.playerMobMap[player.uniqueId] == "TUFFGOLEM") {
             player.openInventory(player.enderChest)
         } else {
@@ -663,27 +675,30 @@ class MobPowers(private val plugin: Mobcraft) {
         plugin.enableFlight(player)
         player.flySpeed = 0.09F
         applyGhastEffects(player)
-        player.addPotionEffect(
-            PotionEffect(PotionEffectType.FIRE_RESISTANCE, -1, 0, false, false, false)
-        )
-        player.addPotionEffect(
-            PotionEffect(PotionEffectType.REGENERATION, -1, 0, false, false, false)
-        )
+    }
+
+    fun ghastCurse(player: Player) {
+        cursed.add(player.name)
+        player.removePotionEffect(PotionEffectType.FIRE_RESISTANCE)
+        player.removePotionEffect(PotionEffectType.REGENERATION)
+        disableFlight(player)
+    }
+
+    fun ghastUncurse(player: Player) {
+        cursed.remove(player.name)
+        applyGhastEffects(player)
     }
 
     fun applyGhastEffects(player: Player) {
-        if (!player.hasPotionEffect(PotionEffectType.FIRE_RESISTANCE)) {
-            player.addPotionEffect(
-                PotionEffect(PotionEffectType.FIRE_RESISTANCE, -1, 0, false, false, false)
-            )
-            player.addPotionEffect(
-                PotionEffect(PotionEffectType.REGENERATION, -1, 0, false, false, false)
-            )
-        }
+        player.addPotionEffect(PotionEffect(PotionEffectType.FIRE_RESISTANCE, -1, 0, false, false, false))
+        player.addPotionEffect(PotionEffect(PotionEffectType.REGENERATION, -1, 0, false, false, false))
+        plugin.enableFlight(player)
+        player.flySpeed = 0.09F
     }
 
     fun onGhastFireball(event: PlayerInteractEvent) {
         val player = event.player
+        if (cursed.contains(player.name)) return
         if (plugin.playerMobMap[player.uniqueId]?.uppercase() != "GHAST") return
         if (!event.action.name.contains("LEFT_CLICK")) return
 
@@ -718,14 +733,10 @@ class MobPowers(private val plugin: Mobcraft) {
 
     fun onGhastMove(event: PlayerMoveEvent) {
         val player = event.player
+        if (cursed.contains(player.name)) return
         val mob = plugin.playerMobMap[player.uniqueId]?.uppercase() ?: return
         if (mob != "GHAST") return
-
-        if (!player.hasPotionEffect(PotionEffectType.FIRE_RESISTANCE)) {
-            player.addPotionEffect(
-                PotionEffect(PotionEffectType.FIRE_RESISTANCE, -1, 0, false, false, false)
-            )
-        }
+        player.addPotionEffect(PotionEffect(PotionEffectType.FIRE_RESISTANCE, -1, 0, false, false, false))
     }
 
     // ----------------------- AXOLOTL -------------------------------
@@ -734,113 +745,77 @@ class MobPowers(private val plugin: Mobcraft) {
         plugin.mobsToPreventLoot.add("AXOLOTL")
         player.addPotionEffect(PotionEffect(PotionEffectType.REGENERATION, -1, 1))
         player.addPotionEffect(PotionEffect(PotionEffectType.WATER_BREATHING, -1, 0))
-        player.addPotionEffect(PotionEffect(PotionEffectType.CONDUIT_POWER, 40, 0, false, false, false))
+        player.addPotionEffect(PotionEffect(PotionEffectType.CONDUIT_POWER, -1, 0, false, false, false))
+        player.addPotionEffect(PotionEffect(PotionEffectType.DOLPHINS_GRACE,-1,0,false, false, false))
+    }
+
+    fun axolotlCurse(player: Player) {
+        cursed.add(player.name)
+        player.removePotionEffect(PotionEffectType.REGENERATION)
+        player.removePotionEffect(PotionEffectType.WATER_BREATHING)
+        player.removePotionEffect(PotionEffectType.CONDUIT_POWER)
+        player.removePotionEffect(PotionEffectType.DOLPHINS_GRACE)
+        disableFlight(player)
+    }
+
+    fun axolotlUncurse(player: Player) {
+        cursed.remove(player.name)
+        applyAxolotlEffects(player)
+    }
+
+    fun applyAxolotlEffects(player: Player) {
+        player.addPotionEffect(PotionEffect(PotionEffectType.REGENERATION, -1, 1, false, false, false))
+        player.addPotionEffect(PotionEffect(PotionEffectType.WATER_BREATHING, -1, 0, false, false, false))
+        player.addPotionEffect(PotionEffect(PotionEffectType.CONDUIT_POWER, -1, 0, false, false, false))
+        player.addPotionEffect(PotionEffect(PotionEffectType.DOLPHINS_GRACE, -1, 0, false, false, false))
+    }
+
+    // ----------------------- SKELETON -----------------------
+    fun onSkeletonInitialize(player: Player) {
+        plugin.mobsToPreventLoot.add("SKELETON")
 
         player.addPotionEffect(
             PotionEffect(
-                PotionEffectType.DOLPHINS_GRACE,
-                -1,
+                PotionEffectType.POISON,
+                1,
                 0,
-                false, false, false
+                false,
+                false
             )
-        )
-        plugin.server.scheduler.runTaskTimer(plugin, Runnable {
-            if (!player.isOnline) return@Runnable
-
-            val type = player.location.block.type
-            val inWater =
-                type == Material.WATER ||
-                        type == Material.KELP ||
-                        type == Material.KELP_PLANT ||
-                        type == Material.BUBBLE_COLUMN
-            if (inWater) {
-                player.addPotionEffect(
-                    PotionEffect(
-                        PotionEffectType.CONDUIT_POWER,
-                        40,
-                        0,
-                        false, false, false
-                    )
-                )
-            } else {
-                // Normal on land
-                player.removePotionEffect(PotionEffectType.CONDUIT_POWER)
-            }
-
-        }, 0L, 10L)
+        ) // just to clear if present
+        player.removePotionEffect(PotionEffectType.POISON)
     }
-    fun applyAxolotlEffects(player: Player) {
-        if (!player.hasPotionEffect(PotionEffectType.REGENERATION)) {
-            player.addPotionEffect(
-                PotionEffect(PotionEffectType.REGENERATION, -1, 1, false, false, false)
-            )
-        }
-
-        if (!player.hasPotionEffect(PotionEffectType.WATER_BREATHING)) {
-            player.addPotionEffect(
-                PotionEffect(PotionEffectType.WATER_BREATHING, -1, 0, false, false, false)
-            )
-        }
-        if (!player.hasPotionEffect(PotionEffectType.DOLPHINS_GRACE)) {
-            player.addPotionEffect(
-                PotionEffect(PotionEffectType.DOLPHINS_GRACE, -1, 0, false, false, false)
-            )
-        }
-        fun onAxolotlDeath(event: PlayerDeathEvent) {
-            val player = event.entity
-            if (plugin.playerMobMap[player.uniqueId]?.uppercase() == "AXOLOTL") {
-                plugin.server.scheduler.runTaskLater(plugin, Runnable {
-                    player.spigot().respawn()
-                }, 1L)
-            }
-        }
-            // ----------------------- SKELETON -----------------------
-    fun onSkeletonInitialize(player: Player) {
-                plugin.mobsToPreventLoot.add("SKELETON")
-
-                player.addPotionEffect(
-                    PotionEffect(
-                        PotionEffectType.POISON,
-                        1,
-                        0,
-                        false,
-                        false
-                    )
-                ) // just to clear if present
-                player.removePotionEffect(PotionEffectType.POISON)
-            }
 
     fun onSkeletonTick(player: Player) {
-                if (player.hasPotionEffect(PotionEffectType.POISON)) {
-                    player.removePotionEffect(PotionEffectType.POISON)
-                }
-            }
-
-            // ----------------------- HOMING ARROWS -----------------------
-    fun onSkeletonShoot(event: EntityShootBowEvent) {
-                val player = event.entity
-                if (player !is Player) return
-                if (plugin.playerMobMap[player.uniqueId]?.equals("SKELETON", ignoreCase = true) != true) return
-
-                val arrow = event.projectile
-                if (arrow !is Arrow) return
-
-                object : BukkitRunnable() {
-                    override fun run() {
-                        if (arrow.isDead || arrow.isOnGround) {
-                            cancel()
-                            return
-                        }
-                        val nearby = arrow.world.getNearbyEntities(arrow.location, 16.0, 16.0, 16.0)
-                            .filterIsInstance<LivingEntity>()
-                            .filter { it != player }
-
-                        val target = nearby.minByOrNull { it.location.distanceSquared(arrow.location) } ?: return
-                        val direction = target.eyeLocation.toVector().subtract(arrow.location.toVector()).normalize()
-                        arrow.velocity =
-                            arrow.velocity.add(direction.multiply(0.2)).normalize().multiply(arrow.velocity.length())
-                    }
-                }.runTaskTimer(plugin, 1L, 1L)
-            }
+        if (player.hasPotionEffect(PotionEffectType.POISON)) {
+            player.removePotionEffect(PotionEffectType.POISON)
         }
     }
+
+    // ----------------------- HOMING ARROWS -----------------------
+    fun onSkeletonShoot(event: EntityShootBowEvent) {
+        val player = event.entity
+        if (player !is Player) return
+        if (plugin.playerMobMap[player.uniqueId]?.equals("SKELETON", ignoreCase = true) != true) return
+
+        val arrow = event.projectile
+        if (arrow !is Arrow) return
+
+        object : BukkitRunnable() {
+            override fun run() {
+                if (arrow.isDead || arrow.isOnGround) {
+                    cancel()
+                    return
+                }
+                val nearby = arrow.world.getNearbyEntities(arrow.location, 16.0, 16.0, 16.0)
+                    .filterIsInstance<LivingEntity>()
+                    .filter { it != player }
+
+                val target = nearby.minByOrNull { it.location.distanceSquared(arrow.location) } ?: return
+                val direction = target.eyeLocation.toVector().subtract(arrow.location.toVector()).normalize()
+                arrow.velocity =
+                    arrow.velocity.add(direction.multiply(0.2)).normalize().multiply(arrow.velocity.length())
+            }
+        }.runTaskTimer(plugin, 1L, 1L)
+    }
+}

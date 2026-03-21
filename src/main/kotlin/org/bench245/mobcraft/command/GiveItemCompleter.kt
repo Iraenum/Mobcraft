@@ -56,6 +56,12 @@ class GiveItemCompleter(private val plugin: Mobcraft) : TabCompleter {
                             "you get nothing, idiot"
                         )
                     }
+                    "ELDER_GUARDIAN" -> {
+                        listOf(
+                            "sponge",
+                            "prismarine"
+                        )
+                    }
 
                     else -> emptyList()
                 }

@@ -5,7 +5,6 @@ import org.bench245.mobcraft.command.*
 import org.bench245.mobcraft.command.MobCraft.MobPowers.MobPowers
 import org.bench245.mobcraft.commands.GiveItemCompleter
 import org.bench245.mobcraft.data.PunishmentManager
-import org.bench245.mobcraft.data.TimerTask
 import org.bukkit.*
 import org.bukkit.attribute.Attribute
 import org.bukkit.command.CommandExecutor
@@ -18,6 +17,8 @@ import org.bukkit.inventory.ItemStack
 import org.bukkit.loot.LootContext.Builder
 import org.bukkit.persistence.PersistentDataType
 import org.bukkit.plugin.java.JavaPlugin
+import org.bukkit.potion.PotionEffectType
+import org.bukkit.scheduler.BukkitRunnable
 import java.util.*
 
 class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
@@ -27,6 +28,7 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
     val flyingPlayers = mutableSetOf<String>()
     val playerMobMap: MutableMap<UUID, String> = mutableMapOf()
     val takenMobs = mutableSetOf<String>()
+    val cursed = mutableSetOf<String>()
 
     private val lootToggleCommand = LootToggle(this)
     private val flightCommand = Flight(this)
@@ -89,7 +91,11 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
 
 
         // Start punishment timer
-        TimerTask(this, punishmentManager).runTaskTimer(this, 20L, 1200L)
+        object : BukkitRunnable() {
+            override fun run() {
+                punishmentManager.checkTimers()
+            }
+        }.runTaskTimer(this, 0L, 200L)
 
         loadMobcraftConfig()
         logger.info("MobCraft has been enabled!")
@@ -106,6 +112,9 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
         flyingPlayers.clear()
         flyingPlayers.addAll(config.getStringList("flyingPlayers"))
 
+        cursed.clear()
+        cursed.addAll(config.getStringList("cursed"))
+
         playerMobMap.clear()
         val section = config.getConfigurationSection("playerMobMap") ?: return
         for (key in section.getKeys(false)) {
@@ -118,6 +127,7 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
     private fun saveMobcraftConfig() {
         config.set("mobsToPreventLoot", mobsToPreventLoot.toList())
         config.set("flyingPlayers", flyingPlayers.toList())
+        config.set("cursed", cursed.toList())
         config.set("playerMobMap", null)
 
         for ((uuid, value) in playerMobMap) {
@@ -186,6 +196,55 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
     fun setLootEnabled(enabled: Boolean) {
         lootEnabled = enabled
     }
+    @EventHandler
+    fun curseHandler(event: EntityPotionEffectEvent) {
+        val player = event.entity as? Player ?: return
+        val mob = playerMobMap[player.uniqueId]?.uppercase() ?: "NONE"
+        if (mob == "NONE") return
+        if (event.modifiedType != PotionEffectType.UNLUCK) return
+        when (event.action) {
+            EntityPotionEffectEvent.Action.ADDED -> {
+                when(mob) {
+                    "ELDER_GUARDIAN" -> mobPowers.elderGuardianCurse(player)
+
+                    "BLAZE" -> mobPowers.blazeCurse(player)
+
+                    "ENDERMAN" -> mobPowers.endermanCurse(player)
+
+                    "ENDER_DRAGON" -> mobPowers.enderDragonCurse(player)
+
+                    "TUFFGOLEM" -> mobPowers.tuffGolemCurse(player)
+
+                    "GHAST" -> mobPowers.ghastCurse(player)
+
+                    "AXOLOTL" -> mobPowers.axolotlCurse(player)
+                }
+            }
+            EntityPotionEffectEvent.Action.REMOVED -> {
+                player.sendMessage(event.action.name)
+                when(mob) {
+                    "ELDER_GUARDIAN" -> mobPowers.elderGuardianUncurse(player)
+
+                    "BLAZE" -> mobPowers.blazeUncurse(player)
+
+                    "ENDERMAN" -> mobPowers.endermanUncurse(player)
+
+                    "ENDER_DRAGON" -> mobPowers.enderDragonUncurse(player)
+
+                    "TUFFGOLEM" -> mobPowers.tuffGolemUncurse(player)
+
+                    "GHAST" -> mobPowers.ghastUncurse(player)
+
+                    "AXOLOTL" -> mobPowers.axolotlUncurse(player)
+                }
+            }
+            EntityPotionEffectEvent.Action.CLEARED -> {
+                event.isCancelled = true
+                return
+            }
+            else -> {}
+        }
+    }
 
     @EventHandler
     fun onEntityDeath(event: EntityDeathEvent) {
@@ -201,26 +260,16 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
 
         Bukkit.getScheduler().runTaskLater(this, Runnable {
 
-            // 🔓 Override punishment for specific mobs
-            if (mob == "TUFFGOLEM" || mob == "AXOLOTL" || mob == "NONE") {
-                punishmentManager.unpunish(player)
-                resetPlayerState(player)
-            }
-
-            // ✈ Flight-enabled mobs
             if (mob in listOf("BLAZE", "GHAST", "ENDER_DRAGON")) {
                 enableFlight(player)
             }
 
-            // 🧬 Apply mob-specific respawn effects
             when (mob) {
-                "BLAZE" -> mobPowers.applyBlazeEffects(player)
-
                 "ENDERMAN" -> mobPowers.onEndermanRespawn(event)
 
                 "ENDER_DRAGON" -> mobPowers.applyDragonEffects(player)
 
-                "TUFFGOLEM" -> mobPowers.applyGolemEffects(player)
+                "TUFFGOLEM" -> mobPowers.applyTuffGolemEffects(player)
 
                 "GHAST" -> mobPowers.applyGhastEffects(player)
 
@@ -239,7 +288,8 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
 
         Bukkit.getScheduler().runTaskLater(this, Runnable {
             when (player.gameMode) {
-                GameMode.SPECTATOR -> {
+                GameMode.CREATIVE,
+                GameMode.SPECTATOR-> {
                     enableFlight(player)
                     player.flySpeed = 0.1f
                 }
@@ -249,7 +299,6 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
                         "BLAZE" -> {
                             enableFlight(player)
                             player.flySpeed = 0.03f
-                            mobPowers.onBlazeGamemodeChange(event)
                             mobPowers.applyBlazeEffects(player)
                         }
 
@@ -265,14 +314,22 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
                             mobPowers.applyDragonEffects(player)
                         }
 
-                        "ENDERMAN" -> mobPowers.applyEndermanSpeed(player)
+                        "ENDERMAN" -> {
+                            mobPowers.applyEndermanSpeed(player)
+                            player.allowFlight = false
+                            player.isFlying = false
+                        }
 
                         "TUFFGOLEM" -> {
-                            mobPowers.applyGolemEffects(player)
+                            mobPowers.applyTuffGolemEffects(player)
+                            player.allowFlight = false
+                            player.isFlying = false
                         }
 
                         "AXOLOTL" -> {
                             mobPowers.applyAxolotlEffects(player)
+                            player.allowFlight = false
+                            player.isFlying = false
                         }
                     }
                 }
@@ -285,17 +342,17 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
         val mob = playerMobMap[player.uniqueId]?.uppercase() ?: return
 
         when (mob) {
-            "BLAZE" -> mobPowers.onBlazeInitialize(player)
+            "BLAZE" -> mobPowers.applyBlazeEffects(player)
 
-            "GHAST" -> mobPowers.onGhastInitialize(player)
+            "GHAST" -> mobPowers.applyGhastEffects(player)
 
-            "ENDER_DRAGON" -> mobPowers.onEnderDragonInitialize(player)
+            "ENDER_DRAGON" -> mobPowers.applyDragonEffects(player)
 
             "ENDERMAN" -> mobPowers.applyEndermanSpeed(player)
 
-            "TUFFGOLEM" -> mobPowers.applyGolemEffects(player)
+            "TUFFGOLEM" -> mobPowers.applyTuffGolemEffects(player)
 
-            "AXOLOTL" -> mobPowers.onAxolotlInitialize(player)
+            "AXOLOTL" -> mobPowers.applyAxolotlEffects(player)
         }
     }
     @EventHandler
@@ -329,7 +386,6 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
         val mob = playerMobMap[player.uniqueId]?.uppercase() ?: "NONE"
         when (mob) {
             "TUFFGOLEM" -> {
-                mobPowers.onTuffGolemDeath(event)
                 player.world.dropItemNaturally(location, ItemStack(Material.TUFF, 64))
             }
 
@@ -367,7 +423,7 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
         val mob = playerMobMap[player.uniqueId]?.uppercase() ?: return
 
         when (mob) {
-            "BLAZE" -> mobPowers.onBlazeRightClick(event)
+            "BLAZE" -> mobPowers.onBlazeRodUse(event)
 
             "GHAST" -> mobPowers.onGhastFireball(event)
 
@@ -414,7 +470,6 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
                     event.isCancelled = true
                 }
 
-                // 🔥 Call Blaze projectile handler
                 mobPowers.onBlazeProjectileHit(event)
             }
 
@@ -427,47 +482,11 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
                 if (event.damager is Skeleton) event.isCancelled = true
             }
 
-            "TUFFGOLEM" -> {
-                mobPowers.onTuffGolemHit(event)
-            }
-
             "ENDERMAN" -> {
-                if (event.damager is Enderman)
-                    event.isCancelled = true
-
-                if (event.damager is Projectile) {
-                    event.isCancelled = true
-                    event.damager.remove()
-
-                    player.world.spawnParticle(
-                        Particle.CRIT,
-                        player.location.add(0.0, 1.0, 0.0),
-                        10,
-                        0.2,
-                        0.2,
-                        0.2,
-                        0.05
-                    )
-                    player.world.playSound(
-                        player.location,
-                        Sound.ENTITY_ITEM_BREAK,
-                        1f,
-                        1f
-                    )
-                }
-
                 mobPowers.onEndermanProjectileDamage(event)
             }
 
-            "ENDER_DRAGON" -> {
-                if (event.damager is EnderDragon)
-                    event.isCancelled = true
-
-                if (event.damager is AreaEffectCloud) {
-                    val cloud = event.damager as AreaEffectCloud
-                    if (cloud.particle == Particle.DRAGON_BREATH) event.isCancelled = true
-                }
-            }
+            "ENDER_DRAGON" -> mobPowers.onDragonDamage(event)
 
             "ELDER_GUARDIAN" -> {
                 if (event.damager is ElderGuardian)
@@ -486,51 +505,6 @@ class Mobcraft : JavaPlugin(), Listener, CommandExecutor {
             "BLAZE" -> mobPowers.onBlazeMove(event)
             "GHAST" -> mobPowers.onGhastMove(event)
         }
-    }
-
-    @EventHandler
-    fun onPlayerFall(event: EntityDamageEvent) {
-        val player = event.entity
-        val mob = playerMobMap[player.uniqueId]?.uppercase() ?: return
-
-        when (mob) {
-            "ENDER_DRAGON" -> mobPowers.onDragonFallDamage(event)
-        }
-    }
-
-    @EventHandler
-    fun onEndermanProjectileDamage(event: EntityDamageByEntityEvent) {
-        val target = event.entity as? Player ?: return
-        val mob = playerMobMap[target.uniqueId]?.uppercase() ?: return
-        if (mob != "ENDERMAN") return
-
-        val projectile = event.damager as? Projectile ?: return
-
-        if (projectile !is Arrow) return
-
-        if (mobPowers.canPierceEndermanShield(projectile.shooter)) return
-
-        val key = NamespacedKey(this, "enderman_reflected")
-        if (projectile.persistentDataContainer.has(key, PersistentDataType.BYTE)) return
-
-        event.isCancelled = true
-
-        projectile.persistentDataContainer.set(key, PersistentDataType.BYTE, 1)
-
-        projectile.velocity = projectile.velocity.multiply(-1)
-
-        target.world.spawnParticle(
-            Particle.CRIT,
-            target.location.add(0.0, 1.0, 0.0),
-            15, 0.3, 0.3, 0.3, 0.05
-        )
-
-        target.world.playSound(
-            target.location,
-            Sound.ITEM_SHIELD_BLOCK,
-            1f,
-            1.3f
-        )
     }
 
     @EventHandler
