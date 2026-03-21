@@ -82,6 +82,7 @@ class MobPowers(private val plugin: Mobcraft) {
     }
 
     fun applyBlazeEffects(player: Player) {
+        if (cursed.contains(player.name)) return
         player.addPotionEffect(PotionEffect(PotionEffectType.FIRE_RESISTANCE, -1, 0, false, false, false))
         plugin.enableFlight(player)
         player.flySpeed = 0.03F
@@ -219,6 +220,7 @@ class MobPowers(private val plugin: Mobcraft) {
     }
 
     fun applyEndermanSpeed(player: Player) {
+        if (cursed.contains(player.name)) return
         player.getAttribute(Attribute.MOVEMENT_SPEED)?.baseValue = 0.14
     }
 
@@ -445,6 +447,7 @@ class MobPowers(private val plugin: Mobcraft) {
     }
 
     fun applyDragonEffects(player: Player) {
+        if (cursed.contains(player.name)) return
         player.addPotionEffect(PotionEffect(PotionEffectType.FIRE_RESISTANCE, -1, 0, false, false, false))
         player.addPotionEffect(PotionEffect(PotionEffectType.WATER_BREATHING, -1, 0, false, false, false))
         plugin.enableFlight(player)
@@ -655,6 +658,7 @@ class MobPowers(private val plugin: Mobcraft) {
     }
 
     fun applyTuffGolemEffects(player: Player) {
+        if (cursed.contains(player.name)) return
         player.addPotionEffect(PotionEffect(PotionEffectType.RESISTANCE, -1, 0, false, false, false))
     }
 
@@ -690,6 +694,7 @@ class MobPowers(private val plugin: Mobcraft) {
     }
 
     fun applyGhastEffects(player: Player) {
+        if (cursed.contains(player.name)) return
         player.addPotionEffect(PotionEffect(PotionEffectType.FIRE_RESISTANCE, -1, 0, false, false, false))
         player.addPotionEffect(PotionEffect(PotionEffectType.REGENERATION, -1, 0, false, false, false))
         plugin.enableFlight(player)
@@ -764,6 +769,7 @@ class MobPowers(private val plugin: Mobcraft) {
     }
 
     fun applyAxolotlEffects(player: Player) {
+        if (cursed.contains(player.name)) return
         player.addPotionEffect(PotionEffect(PotionEffectType.REGENERATION, -1, 1, false, false, false))
         player.addPotionEffect(PotionEffect(PotionEffectType.WATER_BREATHING, -1, 0, false, false, false))
         player.addPotionEffect(PotionEffect(PotionEffectType.CONDUIT_POWER, -1, 0, false, false, false))
